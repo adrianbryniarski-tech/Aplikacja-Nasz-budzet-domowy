@@ -34,19 +34,6 @@ enable_signup = true
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
-# Reset hasła kodem (OTP) — 6 cyfr, ważne 1h. Aplikacja używa
-# verifyOTP(type: recovery) zamiast magic-linka (link prowadzi na
-# localhost i nie działa na telefonie).
-otp_length = 6
-otp_expiry = 3600
-
-# Szablon maila resetu — MUSI zawierać {{ .Token }} (6-cyfrowy kod).
-# Uwaga: hostowany projekt NIE czyta tego automatycznie — wklej treść w
-# Supabase → Authentication → Email Templates → "Reset Password", albo
-# zastosuj przez `supabase config push` (gdy projekt jest zlinkowany).
-[auth.email.template.recovery]
-subject = "Twój kod resetu hasła — Nasz budżet domowy"
-content_path = "./templates/recovery.html"
 
 [realtime]
 enabled = true
