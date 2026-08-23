@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:nasz_budzet_domowy/core/error_messages.dart';
+import 'package:nasz_budzet_domowy/core/haptics.dart';
 import 'package:nasz_budzet_domowy/features/animations/presentation/animation_player.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
@@ -264,6 +265,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     switch (result) {
       case TransactionWriteSuccess():
+        ref.read(hapticsProvider).success();
         if (!_isEditing) _playSuccessAnimation();
         context.pop(true);
       case TransactionWriteQueued():

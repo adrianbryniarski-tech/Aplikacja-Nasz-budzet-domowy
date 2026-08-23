@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/data/dashboard_summary.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/animated_amount.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/animated_neon_border.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/bento_tile.dart';
 
@@ -35,8 +36,10 @@ class BalanceTile extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                fmt.format(balance),
+              // Count-up: saldo płynnie „dolicza się" do wartości przy
+              // wejściu i przy zmianie okresu.
+              child: AnimatedAmount(
+                cents: summary.balanceCents,
                 style: tt.displayMedium?.copyWith(
                   color:
                       positive ? AppTheme.incomeAccent : AppTheme.expenseAccent,
@@ -117,11 +120,6 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    final fmt = NumberFormat.currency(
-      locale: 'pl_PL',
-      symbol: 'zł',
-      decimalDigits: 0,
-    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,8 +127,9 @@ class _Stat extends StatelessWidget {
           label,
           style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
         ),
-        Text(
-          fmt.format(valueCents / 100),
+        AnimatedAmount(
+          cents: valueCents,
+          decimalDigits: 0,
           style: tt.titleMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.w700,

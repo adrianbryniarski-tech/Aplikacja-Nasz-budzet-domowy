@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/core/error_messages.dart';
+import 'package:nasz_budzet_domowy/core/haptics.dart';
 import 'package:nasz_budzet_domowy/core/security/app_lock.dart';
 import 'package:nasz_budzet_domowy/features/animations/application/animation_settings.dart';
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
@@ -171,6 +172,7 @@ class SettingsScreen extends ConsumerWidget {
           ...AppAnimation.values.map(
             (a) => _AnimationTile(animation: a),
           ),
+          const _HapticsTile(),
           const SizedBox(height: 32),
           Text(
             'Sterowanie głosem',
@@ -848,6 +850,30 @@ class _VoiceModelCardState extends State<_VoiceModelCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Włącznik delikatnych wibracji przy akcjach (zapis, usunięcie, zmiana
+/// zakładki). Osobno od animacji wizualnych — nie każdy lubi haptykę.
+class _HapticsTile extends ConsumerWidget {
+  const _HapticsTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(hapticsEnabledProvider);
+    return ComicCard(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: SwitchListTile(
+        value: enabled,
+        onChanged: (v) =>
+            ref.read(hapticsEnabledProvider.notifier).setEnabled(enabled: v),
+        title: const Text('Wibracje przy akcjach'),
+        subtitle: const Text(
+          'Delikatne „kliknięcie" przy zapisie, usuwaniu i zmianie zakładki.',
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
   }

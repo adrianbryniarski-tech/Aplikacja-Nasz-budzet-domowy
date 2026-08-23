@@ -25,6 +25,25 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23d',
+    date: '23 sierpnia 2026',
+    title: 'Apka po liftingu — płynniej i nowocześniej',
+    changes: [
+      'Zmiana zakładki i wejście na nowy ekran są teraz płynne '
+          '(delikatne przenikanie zamiast twardego cięcia) — we '
+          'wszystkich motywach.',
+      'Saldo, dochody i wydatki na pulpicie „doliczają się" płynnie do '
+          'wartości — także po zmianie okresu.',
+      'Zamiast kręcącego kółka pulpit i lista transakcji pokazują przy '
+          'ładowaniu szkielet ekranu (jak w nowoczesnych apkach '
+          'bankowych).',
+      'Delikatne wibracje przy zapisaniu, usunięciu i zmianie zakładki '
+          '— można wyłączyć w Ustawieniach → Animacje.',
+      'Treść wchodzi pod przezroczysty pasek statusu (edge-to-edge) — '
+          'wygląd jak w Androidzie 15.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23c',
     date: '23 sierpnia 2026',
     title: 'Wielka paczka wygody: edycja, szukajka, cykliczne, PIN…',
