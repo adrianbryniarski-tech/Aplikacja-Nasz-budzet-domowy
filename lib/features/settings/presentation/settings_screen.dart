@@ -847,9 +847,10 @@ class _BankListenerCard extends ConsumerWidget {
         secondary: const AppIcon(Icons.notifications_active_outlined),
         title: const Text('Propozycje z powiadomień banku (beta)'),
         subtitle: Text(
-          'Płatność kartą w PKO BP / ING / Revolut od razu pojawi się '
-          'jako propozycja wydatku do zatwierdzenia (baner na liście '
-          'Transakcji). Wszystko zostaje na telefonie.',
+          'Płatność kartą (też przez Portfel Google) albo powiadomienie '
+          'z PKO BP / ING / Revolut od razu pojawi się jako propozycja '
+          'wydatku do zatwierdzenia (baner na liście Transakcji). '
+          'Wszystko zostaje na telefonie.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

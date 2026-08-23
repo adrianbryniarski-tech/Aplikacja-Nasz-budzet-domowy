@@ -10,11 +10,17 @@ import 'package:notification_listener_service/notification_listener_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-/// Obsługiwane aplikacje bankowe: pakiet Androida → nazwa banku.
+/// Obsługiwane źródła powiadomień: pakiet Androida → etykieta.
+///
+/// Portfel Google jest tu kluczowy: przy płatności zbliżeniowej to ON
+/// pokazuje push („Zapłacono 23,50 zł w Biedronka"), a pushe transakcyjne
+/// banków bywają domyślnie wyłączone. Dublet z powiadomieniem banku o tej
+/// samej płatności wyłapuje anty-dublet w [BankSuggestionsNotifier.add].
 const kBankPackages = <String, String>{
   'pl.pkobp.iko': 'PKO BP',
   'pl.ing.mojeing': 'ING',
   'com.revolut.revolut': 'Revolut',
+  'com.google.android.apps.walletnfcrel': 'Portfel Google',
 };
 
 /// Propozycja wydatku/wpływu wyłuskana z powiadomienia banku.
@@ -149,23 +155,32 @@ class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_prefsKey) ?? const [];
-      state = [
+      final loaded = [
         for (final s in raw)
           BankSuggestion.fromJson(jsonDecode(s) as Map<String, dynamic>),
       ];
+      // Merge zamiast nadpisania — nasłuch mógł dorzucić propozycję,
+      // zanim skończył się odczyt z dysku; nie wolno jej zgubić.
+      final knownIds = {for (final s in state) s.id};
+      state = [
+        ...state,
+        ...loaded.where((s) => !knownIds.contains(s.id)),
+      ].take(maxSuggestions).toList();
     } on Object catch (e) {
       debugPrint('bank_suggestions load: $e');
     }
   }
 
   Future<void> add(BankSuggestion suggestion) async {
-    // Anty-dublet: to samo powiadomienie potrafi przyjść kilka razy
-    // (aktualizacje wpisu w belce) — ta sama kwota + sklep w krótkim
-    // oknie czasu traktujemy jako jedną propozycję.
+    // Anty-dublet: ta sama kwota w oknie 10 minut = jedna propozycja.
+    // Celowo BEZ porównywania sklepu — o jednej płatności zbliżeniowej
+    // potrafią powiadomić dwie aplikacje naraz (bank i Portfel Google),
+    // każda innym tekstem. Koszt kompromisu: dwie RÓŻNE płatności na
+    // identyczną kwotę w 10 minut dadzą jedną propozycję — drugą można
+    // dodać ręcznie; podwójny wpis w budżecie byłby gorszy.
     final duplicate = state.any(
       (s) =>
           s.amountCents == suggestion.amountCents &&
-          s.merchant == suggestion.merchant &&
           suggestion.capturedAt.difference(s.capturedAt).inMinutes.abs() < 10,
     );
     if (duplicate) return;

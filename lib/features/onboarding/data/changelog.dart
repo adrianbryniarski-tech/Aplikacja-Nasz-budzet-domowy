@@ -39,10 +39,11 @@ const List<ChangelogEntry> kChangelog = [
       'Bez obaw o duplikaty — wpisy, które już są w budżecie (np. '
           'dodane ręcznie albo z poprzedniego wyciągu), przy imporcie '
           'zostaną pominięte.',
-      'Nowość w becie: propozycje z powiadomień banku. Po włączeniu '
-          'w Ustawieniach (sekcja „Import z banku") płatność kartą od '
-          'razu pojawia się jako propozycja na liście Transakcji — '
-          'stukasz, sprawdzasz kategorię i zapisujesz.',
+      'Nowość w becie: propozycje z powiadomień. Po włączeniu '
+          'w Ustawieniach (sekcja „Import z banku") płatność kartą — '
+          'także zbliżeniowo przez Portfel Google — od razu pojawia się '
+          'jako propozycja na liście Transakcji: stukasz, sprawdzasz '
+          'kategorię i zapisujesz.',
     ],
   ),
   ChangelogEntry(

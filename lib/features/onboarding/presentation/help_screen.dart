@@ -146,9 +146,11 @@ class HelpScreen extends StatelessWidget {
                   'z powiadomień banku".',
               'Android poprosi o dostęp do powiadomień — zaznacz „Nasz '
                   'budżet domowy" na liście, która się otworzy.',
-              'Gdy zapłacisz kartą (PKO BP / ING / Revolut), na liście '
-                  'Transakcji pojawi się baner z propozycją — stuknij ją, '
-                  'sprawdź kategorię i zapisz.',
+              'Gdy zapłacisz kartą — także zbliżeniowo przez Portfel '
+                  'Google — na liście Transakcji pojawi się baner '
+                  'z propozycją — stuknij ją, sprawdź kategorię i zapisz. '
+                  'Czytamy powiadomienia Portfela Google, IKO, Moje ING '
+                  'i Revoluta.',
               'Propozycje zostają na Twoim telefonie (nie w chmurze) '
                   'i znikają po zapisaniu albo odrzuceniu (X).',
             ],
