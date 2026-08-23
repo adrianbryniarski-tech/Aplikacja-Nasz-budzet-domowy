@@ -70,10 +70,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       AuthEmailAlreadyExists() =>
         'Konto z tym emailem już istnieje. Wybierz "Zaloguj się".',
       AuthWeakPassword() => 'Hasło musi mieć co najmniej 6 znaków.',
-      AuthInvalidOtp() =>
-        'Kod resetu jest niepoprawny lub wygasł.',
-      AuthGenericFailure(:final message) =>
-        'Nie udało się: $message',
+      AuthInvalidOtp() => 'Kod resetu jest niepoprawny lub wygasł.',
+      AuthGenericFailure(:final message) => 'Nie udało się: $message',
     };
   }
 
@@ -93,8 +91,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Form(
             key: _formKey,
             child: Column(
@@ -171,9 +168,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     labelText: 'Hasło',
                     prefixIcon: const AppIcon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      tooltip: _showPassword
-                          ? 'Ukryj hasło'
-                          : 'Pokaż hasło',
+                      tooltip: _showPassword ? 'Ukryj hasło' : 'Pokaż hasło',
                       icon: Icon(
                         _showPassword
                             ? Icons.visibility_off_outlined

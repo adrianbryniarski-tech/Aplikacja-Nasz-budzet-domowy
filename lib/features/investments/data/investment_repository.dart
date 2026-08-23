@@ -1,3 +1,4 @@
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/core/supabase/supabase_client.dart';
 import 'package:nasz_budzet_domowy/features/investments/data/investment.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -43,7 +44,8 @@ class InvestmentRepository {
           .eq('household_id', inv.householdId)
           .eq('asset_type', inv.assetType.toDbValue())
           .eq('symbol', inv.symbol)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(kSupabaseWriteTimeout);
 
       if (existingRow != null) {
         final ex = Investment.fromJson(existingRow);
@@ -57,20 +59,31 @@ class InvestmentRepository {
         final earliest = inv.purchasedAt.isBefore(ex.purchasedAt)
             ? inv.purchasedAt
             : ex.purchasedAt;
-        await supabase.from('investments').update({
-          'quantity': totalQty,
-          'buy_price_cents': avgCents,
-          'purchased_at': investmentDateOnly(earliest),
-          // Uzupełnij ticker jeśli stary wiersz go nie miał.
-          if (ex.ticker == null && inv.ticker != null) 'ticker': inv.ticker,
-        }).eq('id', ex.id);
+        await supabase
+            .from('investments')
+            .update({
+              'quantity': totalQty,
+              'buy_price_cents': avgCents,
+              'purchased_at': investmentDateOnly(earliest),
+              // Uzupełnij ticker jeśli stary wiersz go nie miał.
+              if (ex.ticker == null && inv.ticker != null) 'ticker': inv.ticker,
+            })
+            .eq('id', ex.id)
+            .timeout(kSupabaseWriteTimeout);
         return const InvestmentWriteSuccess();
       }
 
-      await supabase.from('investments').insert(inv.toInsert(user.id));
+      await supabase
+          .from('investments')
+          .insert(inv.toInsert(user.id))
+          .timeout(kSupabaseWriteTimeout);
       return const InvestmentWriteSuccess();
     } on PostgrestException catch (e) {
       return InvestmentWriteFailure('${e.code ?? "?"} ${e.message}');
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku, zamiast nieobsłużonego wyjątku,
+      // który zostawiał przycisk „Zapisz" kręcący się bez końca.
+      return InvestmentWriteFailure(humanizeError(e));
     }
   }
 
@@ -80,22 +93,36 @@ class InvestmentRepository {
     required int buyPriceCents,
   }) async {
     try {
-      await supabase.from('investments').update({
-        'quantity': quantity,
-        'buy_price_cents': buyPriceCents,
-      }).eq('id', id);
+      await supabase
+          .from('investments')
+          .update({
+            'quantity': quantity,
+            'buy_price_cents': buyPriceCents,
+          })
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const InvestmentWriteSuccess();
     } on PostgrestException catch (e) {
       return InvestmentWriteFailure('${e.code ?? "?"} ${e.message}');
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku, zamiast nieobsłużonego wyjątku,
+      // który zostawiał przycisk „Zapisz" kręcący się bez końca.
+      return InvestmentWriteFailure(humanizeError(e));
     }
   }
 
   Future<InvestmentWriteResult> delete(String id) async {
     try {
-      await supabase.from('investments').delete().eq('id', id);
+      await supabase
+          .from('investments')
+          .delete()
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const InvestmentWriteSuccess();
     } on PostgrestException catch (e) {
       return InvestmentWriteFailure(e.message);
+    } on Object catch (e) {
+      return InvestmentWriteFailure(humanizeError(e));
     }
   }
 
@@ -137,20 +164,30 @@ class InvestmentRepository {
         'proceeds_cents': proceedsCents,
         'cost_basis_cents': costBasisCents,
         'sold_at': investmentDateOnly(soldAt),
-      });
+      }).timeout(kSupabaseWriteTimeout);
       return const InvestmentWriteSuccess();
     } on PostgrestException catch (e) {
       return InvestmentWriteFailure('${e.code ?? "?"} ${e.message}');
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku, zamiast nieobsłużonego wyjątku,
+      // który zostawiał przycisk „Zapisz" kręcący się bez końca.
+      return InvestmentWriteFailure(humanizeError(e));
     }
   }
 
   /// Cofa zapisaną sprzedaż (przywraca sprzedaną ilość do pozycji).
   Future<InvestmentWriteResult> deleteSale(String id) async {
     try {
-      await supabase.from('investment_sales').delete().eq('id', id);
+      await supabase
+          .from('investment_sales')
+          .delete()
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const InvestmentWriteSuccess();
     } on PostgrestException catch (e) {
       return InvestmentWriteFailure(e.message);
+    } on Object catch (e) {
+      return InvestmentWriteFailure(humanizeError(e));
     }
   }
 
@@ -182,7 +219,7 @@ class InvestmentRepository {
           'captured_at': date,
         },
         onConflict: 'household_id,captured_at',
-      );
+      ).timeout(kSupabaseWriteTimeout);
     } on Object {
       // snapshot to bonus — błąd nie blokuje wyświetlania portfela
     }

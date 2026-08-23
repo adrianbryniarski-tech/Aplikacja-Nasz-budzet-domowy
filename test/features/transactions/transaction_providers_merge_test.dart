@@ -44,8 +44,7 @@ void main() {
       );
     }
 
-    test('pending bez odpowiednika w remote → widoczny jako pending',
-        () async {
+    test('pending bez odpowiednika w remote → widoczny jako pending', () async {
       final remoteCtrl = StreamController<List<Transaction>>();
       final pendingCtrl = StreamController<List<PendingTransaction>>();
 
@@ -98,6 +97,34 @@ void main() {
       expect(last, hasLength(1));
       expect(last.first.id, 'r1');
       expect(last.first.isPending, isFalse);
+
+      await sub.cancel();
+      await remoteCtrl.close();
+      await pendingCtrl.close();
+    });
+
+    test('błąd kolejki lokalnej → lista jedzie na samym remote', () async {
+      final remoteCtrl = StreamController<List<Transaction>>();
+      final pendingCtrl = StreamController<List<PendingTransaction>>();
+
+      final merged = mergeRemoteAndPending(
+        remoteCtrl.stream,
+        pendingCtrl.stream,
+      );
+      final events = <List<Transaction>>[];
+      final errors = <Object>[];
+      final sub = merged.listen(events.add, onError: errors.add);
+
+      // Uszkodzona lokalna baza: kolejka rzuca zamiast danych. Wcześniej
+      // brak onError zabijał merge, a brak `primed` wieszał spinner.
+      remoteCtrl.add([remoteTx(id: 'r1', clientOpId: 'op-r1')]);
+      pendingCtrl.addError(StateError('sqflite padł'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(errors, isEmpty);
+      expect(events, hasLength(1));
+      expect(events.first.single.id, 'r1');
 
       await sub.cancel();
       await remoteCtrl.close();

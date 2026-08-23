@@ -50,8 +50,7 @@ final monthlySpendByCategoryProvider = Provider<Map<String, int>>((ref) {
 /// Budżety z policzonym postępem dla bieżącego miesiąca. Dla każdego budżetu
 /// bierzemy NAJNOWSZY rekord per kategoria z `starts_on <= dziś` — to obsłuży
 /// przyszłość gdy ktoś będzie ustawiał kwoty z wyprzedzeniem.
-final monthlyBudgetProgressProvider =
-    Provider<List<BudgetProgress>>((ref) {
+final monthlyBudgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
   final allBudgets = ref.watch(budgetsProvider).value ?? const [];
   final spend = ref.watch(monthlySpendByCategoryProvider);
   final today = DateTime.now();

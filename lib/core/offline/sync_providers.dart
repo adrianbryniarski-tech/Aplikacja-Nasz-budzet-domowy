@@ -30,7 +30,6 @@ final pendingTransactionsProvider =
 });
 
 /// Globalny licznik (suma + liczba błędów) — używany przez status icon.
-final pendingCountsProvider =
-    StreamProvider<({int total, int errors})>((ref) {
+final pendingCountsProvider = StreamProvider<({int total, int errors})>((ref) {
   return ref.watch(pendingOpsDaoProvider).watchCounts();
 });

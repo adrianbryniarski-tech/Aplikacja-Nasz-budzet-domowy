@@ -4,8 +4,7 @@ import 'package:nasz_budzet_domowy/app/theme.dart';
 
 void main() {
   group('AppTheme', () {
-    test('light theme dla domyślnego wariantu — Material 3 + brightness',
-        () {
+    test('light theme dla domyślnego wariantu — Material 3 + brightness', () {
       final theme = AppTheme.light(AppThemeVariant.spokojny);
       expect(theme.colorScheme.brightness, Brightness.light);
       expect(theme.useMaterial3, isTrue);

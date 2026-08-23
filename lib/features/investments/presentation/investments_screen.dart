@@ -8,8 +8,8 @@ import 'package:nasz_budzet_domowy/features/investments/application/investment_p
 import 'package:nasz_budzet_domowy/features/investments/data/investment.dart';
 import 'package:nasz_budzet_domowy/features/investments/data/investment_repository.dart';
 import 'package:nasz_budzet_domowy/features/investments/presentation/widgets/portfolio_chart.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
 /// Zakładka Inwestycje: wartość portfela + wykres + lista pozycji
@@ -52,8 +52,7 @@ class _InvestmentsScreenState extends ConsumerState<InvestmentsScreen> {
     // Otwarte aktywa = niesprzedane w całości i nieukryte lokalnie.
     final visibleValuations = valuations
         .where(
-          (v) =>
-              !v.isFullyClosed && !_locallyDeleted.contains(v.investment.id),
+          (v) => !v.isFullyClosed && !_locallyDeleted.contains(v.investment.id),
         )
         .toList();
 
@@ -94,13 +93,13 @@ class _InvestmentsScreenState extends ConsumerState<InvestmentsScreen> {
               IconButton(
                 tooltip: 'Odśwież kursy',
                 icon: const AppIcon(Icons.refresh),
-                onPressed: () => ref.invalidate(pricesProvider),
+                onPressed: () => refreshInvestments(ref),
               ),
           ],
         ),
         CupertinoSliverRefreshControl(
           onRefresh: () async {
-            ref.invalidate(pricesProvider);
+            refreshInvestments(ref);
             await Future<void>.delayed(const Duration(milliseconds: 600));
           },
         ),
@@ -109,7 +108,10 @@ class _InvestmentsScreenState extends ConsumerState<InvestmentsScreen> {
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => SliverFillRemaining(
-            child: Center(child: InlineError(message: e.toString())),
+            child: AsyncErrorState(
+              error: e,
+              onRetry: () => refreshInvestments(ref),
+            ),
           ),
           data: (items) {
             if (visibleValuations.isEmpty && sales.isEmpty) {
@@ -148,6 +150,14 @@ class _InvestmentsScreenState extends ConsumerState<InvestmentsScreen> {
                             profit: portfolioProfit,
                             base: portfolioBuy,
                           ),
+                          if (visibleValuations.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            _PriceAgeLabel(
+                              fetchedAt: ref.watch(pricesFetchedAtProvider),
+                              hasPrices:
+                                  (pricesAsync.value ?? const {}).isNotEmpty,
+                            ),
+                          ],
                           if (sales.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             _RealizedLabel(result: realizedResult),
@@ -232,6 +242,31 @@ class _ProfitLabel extends StatelessWidget {
           style: TextStyle(color: color, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+  }
+}
+
+/// „Kursy z 18:42" — wiek wyceny pod wartością portfela. Gdy kursów nie
+/// udało się pobrać wcale, mówi wprost, że pokazujemy ceny zakupu —
+/// rodzina nie powinna patrzeć na starą/przybliżoną wycenę bez oznaczenia.
+class _PriceAgeLabel extends StatelessWidget {
+  const _PriceAgeLabel({required this.fetchedAt, required this.hasPrices});
+
+  final DateTime? fetchedAt;
+  final bool hasPrices;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    if (!hasPrices || fetchedAt == null) {
+      return Text('Kursy niedostępne — wartości wg cen zakupu', style: style);
+    }
+    return Text(
+      'Kursy z ${DateFormat.Hm('pl_PL').format(fetchedAt!)}',
+      style: style,
     );
   }
 }

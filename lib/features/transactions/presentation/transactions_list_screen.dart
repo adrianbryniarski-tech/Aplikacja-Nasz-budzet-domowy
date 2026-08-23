@@ -8,6 +8,7 @@ import 'package:nasz_budzet_domowy/features/categories/application/category_prov
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
 
@@ -75,14 +76,13 @@ class _TransactionsListScreenState
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => SliverFillRemaining(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'Nie udało się pobrać transakcji: $e',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            child: AsyncErrorState(
+              error: e,
+              onRetry: () {
+                ref
+                  ..invalidate(transactionsProvider)
+                  ..invalidate(categoriesProvider);
+              },
             ),
           ),
           data: (txs) {

@@ -29,62 +29,61 @@ class BalanceTile extends StatelessWidget {
       child: BentoTile(
         title: 'Saldo okresu',
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              fmt.format(balance),
-              style: tt.displayMedium?.copyWith(
-                color: positive
-                    ? AppTheme.incomeAccent
-                    : AppTheme.expenseAccent,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                deltaPositive
-                    ? Icons.arrow_upward_rounded
-                    : Icons.arrow_downward_rounded,
-                size: 14,
-                color: deltaPositive
-                    ? AppTheme.incomeAccent
-                    : AppTheme.expenseAccent,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${deltaPositive ? '+' : ''}${fmt.format(delta)}'
-                ' vs poprzedni okres',
-                style: tt.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                fmt.format(balance),
+                style: tt.displayMedium?.copyWith(
+                  color:
+                      positive ? AppTheme.incomeAccent : AppTheme.expenseAccent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _Stat(
-                label: 'Dochody',
-                valueCents: summary.totalIncomeCents,
-                color: AppTheme.incomeAccent,
-              ),
-              const SizedBox(width: 24),
-              _Stat(
-                label: 'Wydatki',
-                valueCents: summary.totalExpenseCents,
-                color: AppTheme.expenseAccent,
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  deltaPositive
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded,
+                  size: 14,
+                  color: deltaPositive
+                      ? AppTheme.incomeAccent
+                      : AppTheme.expenseAccent,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${deltaPositive ? '+' : ''}${fmt.format(delta)}'
+                  ' vs poprzedni okres',
+                  style: tt.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _Stat(
+                  label: 'Dochody',
+                  valueCents: summary.totalIncomeCents,
+                  color: AppTheme.incomeAccent,
+                ),
+                const SizedBox(width: 24),
+                _Stat(
+                  label: 'Wydatki',
+                  valueCents: summary.totalExpenseCents,
+                  color: AppTheme.expenseAccent,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

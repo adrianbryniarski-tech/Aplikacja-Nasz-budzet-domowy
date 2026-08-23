@@ -112,8 +112,10 @@ class _Particle {
   final double startXFraction;
   final double fontSize;
   final double rotation;
+
   /// Kiedy ta cząstka zaczyna spadać (0..1 jako frakcja całej animacji).
   final double fallDelay;
+
   /// Jak długo spada od pojawienia się (0..1 jako frakcja całej animacji).
   /// Mniejsza = szybsza, większa = wolniejsza.
   final double fallDuration;
@@ -145,15 +147,14 @@ class _RainPainter extends CustomPainter {
       final y = startY + (endY - startY) * localT;
 
       final swayProgress = localT * 2 * pi;
-      final x = p.startXFraction * size.width +
-          sin(swayProgress) * p.horizontalSway;
+      final x =
+          p.startXFraction * size.width + sin(swayProgress) * p.horizontalSway;
 
       // Fade-in pierwsze 10%, fade-out ostatnie 15%. Środek pełna widoczność.
       final opacity = localT < 0.10
           ? localT / 0.10
           : (localT < 0.85 ? 1.0 : (1 - (localT - 0.85) / 0.15));
-      final rotationNow =
-          p.rotation + localT * pi * 2 * p.rotationSpeed;
+      final rotationNow = p.rotation + localT * pi * 2 * p.rotationSpeed;
 
       final tp = TextPainter(
         text: TextSpan(

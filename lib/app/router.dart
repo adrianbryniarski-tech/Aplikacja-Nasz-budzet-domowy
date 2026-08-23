@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nasz_budzet_domowy/app/connection_error_screen.dart';
 import 'package:nasz_budzet_domowy/app/home_shell.dart';
 import 'package:nasz_budzet_domowy/features/auth/presentation/sign_in_screen.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
@@ -68,8 +69,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isLoading ? null : '/loading';
       }
 
+      // Błąd bez żadnej wartości w cache = start bez kontaktu z serwerem
+      // (brak internetu, Supabase w pauzie). Ekran błędu z „Spróbuj
+      // ponownie" zamiast udawania braku gospodarstwa — wcześniej taki
+      // błąd wypychał zalogowanego usera na onboarding zakładania
+      // gospodarstwa. Gdy cache ma starą wartość, apka działa na niej.
+      final isConnectionError = location == '/connection-error';
+      if (householdAsync.hasError && !householdAsync.hasValue) {
+        return isConnectionError ? null : '/connection-error';
+      }
+
       final household = householdAsync.value;
-      if (isLoading || isOnAuth) {
+      if (isLoading || isOnAuth || isConnectionError) {
         return household == null ? '/onboarding' : '/home';
       }
       if (household == null && !onOnboarding) return '/onboarding';
@@ -85,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/loading',
         builder: (context, state) => const _BootLoadingScreen(),
+      ),
+      GoRoute(
+        path: '/connection-error',
+        builder: (context, state) => const ConnectionErrorScreen(),
       ),
       GoRoute(
         path: '/sign-in',

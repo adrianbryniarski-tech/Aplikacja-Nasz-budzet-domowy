@@ -39,7 +39,7 @@ class HelpScreen extends StatelessWidget {
             emoji: '🔑',
             title: 'Gdzie znaleźć kod zaproszenia później',
             steps: [
-              'Zakładka „Transakcje" (dolny pasek).',
+              'Zakładka „Pulpit" (pierwsza na dolnym pasku).',
               'Ikona 👤+ w prawym górnym rogu.',
               'Pokaże aktualny kod + przycisk „Kopiuj". Możesz też '
                   'wygenerować nowy.',
@@ -179,7 +179,7 @@ class HelpScreen extends StatelessWidget {
             emoji: '🎨',
             title: 'Jak zmienić wygląd i animacje',
             steps: [
-              'Zakładka „Transakcje" → ⋮ (3 kropki) → „Ustawienia".',
+              'Zakładka „Pulpit" → ⋮ (3 kropki) → „Ustawienia".',
               'Wybierz jeden z 14 motywów (m.in. Manga — czarno-biały komiks '
                   'z własnymi ikonami, Kredka, Dragon Ball, Pokémon, Aurora) '
                   '+ tryb jasny/ciemny. Każdy ma inne kolory, czcionkę '
@@ -191,9 +191,29 @@ class HelpScreen extends StatelessWidget {
             emoji: '🔄',
             title: 'Coś się nie odświeża?',
             steps: [
-              'Pociągnij listę palcem od góry w dół (pull-to-refresh).',
+              'Pociągnij listę palcem od góry w dół (pull-to-refresh) — '
+                  'odświeży też paski budżetów i liczniki przy kategoriach.',
               'Albo stuknij ikonę 🔄 w pasku u góry.',
+              'Na Inwestycjach odświeżenie pobiera świeże kursy — pod '
+                  'wartością portfela widać, z której godziny są kursy.',
               'Dane synchronizują się automatycznie gdy jest internet.',
+            ],
+          ),
+          _HelpSection(
+            emoji: '📡',
+            title: 'Brak internetu albo serwer nie odpowiada',
+            steps: [
+              'Gdy przy starcie nie ma połączenia, apka pokaże ekran '
+                  '„Brak połączenia z serwerem" z przyciskiem „Spróbuj '
+                  'ponownie" — zamiast kręcić kółkiem bez końca.',
+              'Wydatek dodany bez internetu zapisuje się na telefonie '
+                  '(ikona zegarka przy wpisie) i wyśle się sam, gdy wróci '
+                  'połączenie albo gdy znów otworzysz apkę.',
+              'Gdy któryś ekran nie może pobrać danych, zobaczysz krótki '
+                  'opis problemu (internet czy serwer) i przycisk '
+                  '„Spróbuj ponownie".',
+              'Problem nie mija? Prześlij drugiej osobie tekst spod '
+                  '„Szczegóły" — pomoże namierzyć przyczynę.',
             ],
           ),
           SizedBox(height: 24),

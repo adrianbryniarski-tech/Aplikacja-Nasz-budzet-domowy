@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' hide Category;
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/core/supabase/supabase_client.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
@@ -54,11 +55,14 @@ class CategoryRepository {
         'type': type.toDbValue(),
         'is_system': false,
         'parent_id': parentId,
-      });
+      }).timeout(kSupabaseWriteTimeout);
       return const CategoryWriteSuccess();
     } on PostgrestException catch (e) {
       if (e.code == '23505') return const CategoryDuplicateName();
       return CategoryWriteFailure(e.message);
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku zamiast nieobsłużonego wyjątku.
+      return CategoryWriteFailure(humanizeError(e));
     }
   }
 
@@ -74,17 +78,24 @@ class CategoryRepository {
     String? parentId,
   }) async {
     try {
-      await supabase.from('categories').update({
-        'name': name,
-        'icon': icon,
-        'color': colorHex,
-        'type': type.toDbValue(),
-        'parent_id': parentId,
-      }).eq('id', id);
+      await supabase
+          .from('categories')
+          .update({
+            'name': name,
+            'icon': icon,
+            'color': colorHex,
+            'type': type.toDbValue(),
+            'parent_id': parentId,
+          })
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const CategoryWriteSuccess();
     } on PostgrestException catch (e) {
       if (e.code == '23505') return const CategoryDuplicateName();
       return CategoryWriteFailure(e.message);
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku zamiast nieobsłużonego wyjątku.
+      return CategoryWriteFailure(humanizeError(e));
     }
   }
 
@@ -92,10 +103,16 @@ class CategoryRepository {
   /// licznik — jeśli są transakcje, FK constraint zwróci błąd.
   Future<CategoryWriteResult> delete(String id) async {
     try {
-      await supabase.from('categories').delete().eq('id', id);
+      await supabase
+          .from('categories')
+          .delete()
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const CategoryWriteSuccess();
     } on PostgrestException catch (e) {
       return CategoryWriteFailure(e.message);
+    } on Object catch (e) {
+      return CategoryWriteFailure(humanizeError(e));
     }
   }
 
@@ -109,10 +126,12 @@ class CategoryRepository {
       await supabase.rpc<void>(
         'delete_category_with_reassign',
         params: {'p_old_id': oldId, 'p_target_id': targetId},
-      );
+      ).timeout(kSupabaseWriteTimeout);
       return const CategoryWriteSuccess();
     } on PostgrestException catch (e) {
       return CategoryWriteFailure(humanizeRpcError(e));
+    } on Object catch (e) {
+      return CategoryWriteFailure(humanizeError(e));
     }
   }
 
@@ -123,8 +142,7 @@ class CategoryRepository {
     return switch (e.code) {
       'P0010' => 'Nie można usunąć kategorii systemowej.',
       'P0011' => 'Kategoria docelowa należy do innego gospodarstwa.',
-      'P0012' =>
-        'Kategoria docelowa ma inny typ (dochód/wydatek) niż usuwana.',
+      'P0012' => 'Kategoria docelowa ma inny typ (dochód/wydatek) niż usuwana.',
       '42501' => 'Brak uprawnień.',
       _ => e.message,
     };

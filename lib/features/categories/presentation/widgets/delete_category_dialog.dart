@@ -63,13 +63,10 @@ class _DeleteCategoryDialogState extends ConsumerState<DeleteCategoryDialog> {
     final theme = Theme.of(context);
     final count =
         ref.watch(transactionCountByCategoryProvider)[widget.category.id] ?? 0;
-    final all =
-        ref.watch(categoriesProvider).value ?? const <Category>[];
+    final all = ref.watch(categoriesProvider).value ?? const <Category>[];
     final candidates = all
         .where(
-          (c) =>
-              c.id != widget.category.id &&
-              c.type == widget.category.type,
+          (c) => c.id != widget.category.id && c.type == widget.category.type,
         )
         .toList()
       ..sort((a, b) {
@@ -78,8 +75,8 @@ class _DeleteCategoryDialogState extends ConsumerState<DeleteCategoryDialog> {
       });
 
     final needsReassign = count > 0;
-    final cantContinue = needsReassign &&
-        (candidates.isEmpty || _targetId == null);
+    final cantContinue =
+        needsReassign && (candidates.isEmpty || _targetId == null);
 
     return AlertDialog(
       title: Row(
@@ -113,8 +110,7 @@ class _DeleteCategoryDialogState extends ConsumerState<DeleteCategoryDialog> {
                 color: theme.colorScheme.error,
               ),
             ),
-          ]
-          else ...[
+          ] else ...[
             Text(
               'Ta kategoria ma $count ${_pluralTx(count)}. '
               'Wybierz kategorię docelową — transakcje zostaną przeniesione, '

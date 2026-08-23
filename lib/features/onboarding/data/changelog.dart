@@ -25,6 +25,30 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23',
+    date: '23 sierpnia 2026',
+    title: 'Apka nie zawiesza się, gdy nie ma internetu lub serwera',
+    changes: [
+      'Gdy przy starcie nie da się połączyć z serwerem, zamiast kółka '
+          'kręcącego się bez końca zobaczysz jasny ekran „Brak połączenia '
+          'z serwerem" z przyciskiem „Spróbuj ponownie".',
+      'Błędy w całej apce mówią teraz po ludzku, co się stało (np. „Brak '
+          'połączenia z internetem") i mają przycisk „Spróbuj ponownie".',
+      'Zapisywanie (wydatku, budżetu, inwestycji, sprzedaży) nie może już '
+          'kręcić się w nieskończoność — po kilkunastu sekundach dostaniesz '
+          'komunikat, a wydatek dodany bez internetu zapisze się na '
+          'telefonie i wyśle sam później, też po ponownym otwarciu apki.',
+      'Odświeżanie (pociągnięcie listy) działa teraz w pełni: na Budżetach '
+          'odświeża też paski wydatków, na Kategoriach liczniki, a na '
+          'Inwestycjach całą zakładkę, nie tylko kursy.',
+      'Pod wartością portfela widać, z której godziny są kursy („Kursy '
+          'z 18:42"), a „Odśwież kursy" zawsze pobiera świeże. Nowo dodane '
+          'aktywo dostaje kurs od razu.',
+      'Wykres wartości portfela nie zawyża już dni po sprzedaży — '
+          'automatyczny dzienny zapis liczy tylko to, co wciąż posiadamy.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-06-01',
     date: '1 czerwca 2026',
     title: 'Wydatki wg kategorii — z kwotami, dla wybranego okresu',

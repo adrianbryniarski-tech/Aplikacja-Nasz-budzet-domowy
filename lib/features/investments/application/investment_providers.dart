@@ -59,8 +59,7 @@ final portfolioSnapshotsProvider =
 final pricesProvider = FutureProvider<Map<String, double>>((ref) async {
   final items = ref.watch(investmentsProvider).value ?? const [];
   if (items.isEmpty) return const {};
-  final prices =
-      await ref.watch(priceServiceProvider).fetchPrices(items);
+  final prices = await ref.watch(priceServiceProvider).fetchPrices(items);
 
   // Po pobraniu kursów — zapisz dzienny snapshot wartości portfela.
   // (best-effort, nie blokuje gdy padnie)
@@ -90,17 +89,37 @@ final pricesProvider = FutureProvider<Map<String, double>>((ref) async {
   return prices;
 });
 
+/// Kiedy ostatnio realnie pobrano kursy z API (nie z cache) — do etykiety
+/// „Kursy z HH:MM" pod wartością portfela.
+final pricesFetchedAtProvider = Provider<DateTime?>((ref) {
+  // Zależność od [pricesProvider] — po każdym fetchu etykieta przelicza
+  // się na nowo (sam znacznik nie jest reaktywny).
+  ref.watch(pricesProvider);
+  return ref.watch(priceServiceProvider).lastFetchAt;
+});
+
+/// Pełne odświeżenie zakładki Inwestycje: pozycje, sprzedaże, snapshoty
+/// oraz kursy z pominięciem cache TTL. Jedno wejście dla przycisku
+/// „Odśwież kursy", pull-to-refresh i retry po błędzie — dzięki temu
+/// ręczne odświeżenie potrafi też wskrzesić padnięty strumień realtime.
+void refreshInvestments(WidgetRef ref) {
+  ref.read(priceServiceProvider).invalidateCache();
+  ref
+    ..invalidate(investmentsProvider)
+    ..invalidate(investmentSalesProvider)
+    ..invalidate(portfolioSnapshotsProvider)
+    ..invalidate(pricesProvider);
+}
+
 /// Wyceny pozycji (Investment + aktualny kurs). Sortowane: zysk malejąco.
-final investmentValuationsProvider =
-    Provider<List<InvestmentValuation>>((ref) {
+final investmentValuationsProvider = Provider<List<InvestmentValuation>>((ref) {
   final items = ref.watch(investmentsProvider).value ?? const [];
   final prices = ref.watch(pricesProvider).value ?? const {};
   final sold = _soldByInvestment(
     ref.watch(investmentSalesProvider).value ?? const [],
   );
   final out = items.map((inv) {
-    final key =
-        inv.assetType == AssetType.crypto ? inv.symbol : _metalKey(inv);
+    final key = inv.assetType == AssetType.crypto ? inv.symbol : _metalKey(inv);
     return InvestmentValuation(
       investment: inv,
       pricePln: prices[key],

@@ -105,16 +105,14 @@ class DashboardSummary {
   }
 
   static DateTime _bucketKey(DateTime date, BucketMode mode) => switch (mode) {
-        BucketMode.daily =>
-          DateTime(date.year, date.month, date.day),
+        BucketMode.daily => DateTime(date.year, date.month, date.day),
         BucketMode.weekly => () {
             final monday = date.subtract(
               Duration(days: date.weekday - DateTime.monday),
             );
             return DateTime(monday.year, monday.month, monday.day);
           }(),
-        BucketMode.monthly =>
-          DateTime(date.year, date.month),
+        BucketMode.monthly => DateTime(date.year, date.month),
       };
 
   static List<RunningBalancePoint> _buildRunningBalance(
@@ -145,9 +143,8 @@ class DashboardSummary {
         points.add(RunningBalancePoint(date: prevDay, balanceCents: running));
         dayDelta = 0;
       }
-      dayDelta += t.type == TransactionType.income
-          ? t.amountCents
-          : -t.amountCents;
+      dayDelta +=
+          t.type == TransactionType.income ? t.amountCents : -t.amountCents;
       prevDay = day;
     }
     if (prevDay != null) {

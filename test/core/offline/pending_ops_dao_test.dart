@@ -105,8 +105,7 @@ void main() {
     expect(forB.first.clientOpId, 'b');
   });
 
-  test('listForUser pomija dead-lettery (retry_count >= maxRetries)',
-      () async {
+  test('listForUser pomija dead-lettery (retry_count >= maxRetries)', () async {
     await dao.enqueue(makeOp(clientOpId: 'fresh', createdBy: 'u1'));
     await dao.enqueue(makeOp(clientOpId: 'dead', createdBy: 'u1'));
     // Symulujemy maxRetries nieudanych prób dla 'dead'.

@@ -46,8 +46,7 @@ class _CategoryEditSheetState extends ConsumerState<CategoryEditSheet> {
     final e = widget.existing;
     final cats = ref.read(categoriesProvider).value ?? const <Category>[];
     _parentId = e?.parentId ?? widget.initialParentId;
-    final parent =
-        cats.where((c) => c.id == _parentId).firstOrNull;
+    final parent = cats.where((c) => c.id == _parentId).firstOrNull;
     _name = TextEditingController(text: e?.name ?? '');
     _icon = e?.icon ?? parent?.icon ?? 'shopping_cart';
     _colorHex = e?.colorHex ?? parent?.colorHex ?? '#7AB87A';

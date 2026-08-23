@@ -63,13 +63,11 @@ class _TrexFoodFeastState extends State<TrexFoodFeast>
         final globalOpacity = 1 - fadeT;
 
         final trexX = -80.0 + (size.width / 2 - 30) * approachT;
-        final burgerX = size.width + 40.0 -
-            (size.width / 2 + 30) * approachT;
+        final burgerX = size.width + 40.0 - (size.width / 2 + 30) * approachT;
         final burgerScale = (1 - eatT).clamp(0.0, 1.0);
 
-        final trexBounce = burpT > 0
-            ? (1 + 0.15 * (1 - (burpT - 0.5).abs() * 2))
-            : 1.0;
+        final trexBounce =
+            burpT > 0 ? (1 + 0.15 * (1 - (burpT - 0.5).abs() * 2)) : 1.0;
 
         return Stack(
           children: [

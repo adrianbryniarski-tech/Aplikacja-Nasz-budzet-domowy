@@ -25,12 +25,9 @@ final transactionsProvider = StreamProvider<List<Transaction>>((ref) {
     return Stream.value(const <Transaction>[]);
   }
 
-  final remote = ref
-      .watch(transactionRepositoryProvider)
-      .watchAll(householdId);
-  final pending = ref
-      .watch(pendingOpsDaoProvider)
-      .watchForHousehold(householdId);
+  final remote = ref.watch(transactionRepositoryProvider).watchAll(householdId);
+  final pending =
+      ref.watch(pendingOpsDaoProvider).watchForHousehold(householdId);
 
   return mergeRemoteAndPending(remote, pending);
 });
@@ -84,12 +81,23 @@ Stream<List<Transaction>> mergeRemoteAndPending(
         onError: ctrl.addError,
       );
 
-      pendingSub = pending.listen((data) {
-        lastPending = data;
-        pendingReady = true;
-        if (!primed && remoteReady) primed = true;
-        emit();
-      });
+      pendingSub = pending.listen(
+        (data) {
+          lastPending = data;
+          pendingReady = true;
+          if (!primed && remoteReady) primed = true;
+          emit();
+        },
+        // Awaria lokalnej kolejki (np. uszkodzony plik sqflite) nie może
+        // ani wieszać listy (brak `primed`), ani jej ubijać — dane z
+        // serwera są ważniejsze niż kolejka. Degradacja: pusta kolejka.
+        onError: (Object e, StackTrace st) {
+          lastPending = const [];
+          pendingReady = true;
+          if (!primed && remoteReady) primed = true;
+          emit();
+        },
+      );
     },
     onCancel: () async {
       await remoteSub?.cancel();

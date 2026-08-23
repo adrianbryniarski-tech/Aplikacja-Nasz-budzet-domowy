@@ -22,8 +22,7 @@ class CarRush extends StatefulWidget {
   State<CarRush> createState() => _CarRushState();
 }
 
-class _CarRushState extends State<CarRush>
-    with SingleTickerProviderStateMixin {
+class _CarRushState extends State<CarRush> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override

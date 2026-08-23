@@ -8,7 +8,8 @@ import 'package:nasz_budzet_domowy/features/budgets/presentation/widgets/budget_
 import 'package:nasz_budzet_domowy/features/budgets/presentation/widgets/budget_progress_tile.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
 /// Ekran listy budżetów miesięcznych. Każdy rekord = jedna kategoria
@@ -39,7 +40,11 @@ class BudgetsScreen extends ConsumerWidget {
               tooltip: 'Odśwież',
               icon: const AppIcon(Icons.refresh),
               onPressed: () {
-                ref.invalidate(budgetsProvider);
+                // Też transakcje — paski postępu liczą wydatki z
+                // `transactionsProvider`, nie z samych budżetów.
+                ref
+                  ..invalidate(budgetsProvider)
+                  ..invalidate(transactionsProvider);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Odświeżam dane…'),
@@ -57,7 +62,9 @@ class BudgetsScreen extends ConsumerWidget {
         ),
         CupertinoSliverRefreshControl(
           onRefresh: () async {
-            ref.invalidate(budgetsProvider);
+            ref
+              ..invalidate(budgetsProvider)
+              ..invalidate(transactionsProvider);
             await Future<void>.delayed(const Duration(milliseconds: 500));
           },
         ),
@@ -66,7 +73,14 @@ class BudgetsScreen extends ConsumerWidget {
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => SliverFillRemaining(
-            child: Center(child: InlineError(message: e.toString())),
+            child: AsyncErrorState(
+              error: e,
+              onRetry: () {
+                ref
+                  ..invalidate(budgetsProvider)
+                  ..invalidate(transactionsProvider);
+              },
+            ),
           ),
           data: (_) {
             if (progress.isEmpty) {
