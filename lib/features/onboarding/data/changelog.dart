@@ -41,6 +41,10 @@ const List<ChangelogEntry> kChangelog = [
           '— można wyłączyć w Ustawieniach → Animacje.',
       'Treść wchodzi pod przezroczysty pasek statusu (edge-to-edge) — '
           'wygląd jak w Androidzie 15.',
+      'Import z banku pilnuje też wpisów dodanych wcześniej ręcznie: '
+          'wiersz z tym samym dniem, kwotą i typem co coś w budżecie '
+          'zostanie odznaczony z etykietą „chyba już jest" — nic nie '
+          'policzy się podwójnie.',
     ],
   ),
   ChangelogEntry(

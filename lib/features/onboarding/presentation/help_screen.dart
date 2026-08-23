@@ -166,6 +166,10 @@ class HelpScreen extends StatelessWidget {
                   'ją sama.',
               'Stuknij „Zapisz". Nic się nie zdubluje — to, co już było '
                   'w budżecie, zostanie pominięte przy zapisie.',
+              'Bonus: wiersze, które wyglądają na dodane wcześniej ręcznie '
+                  '(ten sam dzień, kwota i typ co wpis w budżecie), apka '
+                  'sama odznacza i oznacza „chyba już jest" — zaznacz je '
+                  'z powrotem tylko, jeśli to naprawdę inne zakupy.',
             ],
           ),
           _HelpSection(

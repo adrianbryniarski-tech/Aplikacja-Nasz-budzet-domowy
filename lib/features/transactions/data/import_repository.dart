@@ -150,6 +150,44 @@ class ImportRepository {
     }
   }
 
+  /// „Miękkie odciski" (dzień|kwota|typ) transakcji gospodarstwa w zakresie
+  /// dat [from]–[to] włącznie.
+  ///
+  /// Podgląd importu oznacza nimi wiersze, które ktoś pewnie dodał już
+  /// RĘCZNIE — ręczny wpis ma inny opis niż bankowy, więc twardy
+  /// `dedup_hash` (liczy opis) go nie złapie. Best-effort: błąd sieci
+  /// zwraca pusty zbiór i import działa jak dotąd.
+  Future<Set<String>> existingSoftKeys({
+    required String householdId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      final rows = await supabase
+          .from('transactions')
+          .select('occurred_at, amount_cents, type')
+          .eq('household_id', householdId)
+          .gte('occurred_at', _dateOnly(from))
+          .lte('occurred_at', _dateOnly(to))
+          .timeout(_bulkTimeout);
+      return {
+        for (final r in rows)
+          softKey(
+            DateTime.parse(r['occurred_at'] as String),
+            (r['amount_cents'] as num).toInt(),
+            TransactionType.fromDbValue(r['type'] as String),
+          ),
+      };
+    } on Object {
+      return const {};
+    }
+  }
+
+  /// Klucz miękkiego dopasowania: dzień + kwota + typ (bez opisu).
+  static String softKey(DateTime day, int amountCents, TransactionType type) {
+    return '${_dateOnly(day)}|$amountCents|${type.name}';
+  }
+
   static String _dateOnly(DateTime dt) {
     final utc = DateTime.utc(dt.year, dt.month, dt.day);
     return utc.toIso8601String().substring(0, 10);
