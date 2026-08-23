@@ -38,6 +38,11 @@ jobs:
       - name: Generate missing platform scaffolding
         run: |
           flutter create --platforms=android --org=pl.naszbudzetdomowy --project-name=nasz_budzet_domowy .
+          # flutter create dokłada szablonowy test/widget_test.dart z klasą
+          # MyApp, której w tej apce nie ma — walił analyze i testy (do
+          # 23.08 maskowane przez brak pipefail). W repo tego pliku
+          # świadomie nie trzymamy, więc po scaffoldingu go usuwamy.
+          rm -f test/widget_test.dart
 
       # UWAGA: `shell: bash` jest tu krytyczne. Jawne `shell: bash` włącza
       # `-o pipefail`; domyślny shell kroku go NIE ma, więc `cmd | tee`
