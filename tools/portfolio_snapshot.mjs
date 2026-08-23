@@ -91,19 +91,37 @@ async function fetchSilverPlnPerGram() {
 }
 
 function todayIso() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+  // Data polska (nie UTC) — apka upsertuje snapshot po dacie lokalnej
+  // telefonu, więc cron musi celować w ten sam wiersz, inaczej między
+  // 00:00 a 02:00 czasu PL powstają dwa snapshoty na dobę.
+  return new Date().toLocaleDateString('en-CA', {
+    timeZone: 'Europe/Warsaw',
+  });
 }
 
 async function main() {
   const investments = await getJson(
-    `${SUPABASE_URL}/rest/v1/investments?select=household_id,asset_type,symbol,quantity,buy_price_cents`,
+    `${SUPABASE_URL}/rest/v1/investments?select=id,household_id,asset_type,symbol,quantity,buy_price_cents`,
     { headers: restHeaders },
   );
   if (investments.length === 0) {
     console.log('Brak inwestycji — nic do zapisania.');
     return;
+  }
+
+  // Sprzedane ilości per pozycja (migracja 0010) — liczymy wartość tylko
+  // z części POZOSTAŁEJ, tak samo jak apka. Bez tego cron zawyżał wykres
+  // o sprzedane jednostki i nadpisywał poprawny snapshot z apki.
+  const sales = await getJson(
+    `${SUPABASE_URL}/rest/v1/investment_sales?select=investment_id,quantity`,
+    { headers: restHeaders },
+  );
+  const soldByInvestment = new Map();
+  for (const s of sales) {
+    soldByInvestment.set(
+      s.investment_id,
+      (soldByInvestment.get(s.investment_id) ?? 0) + Number(s.quantity),
+    );
   }
 
   const cryptoIds = [
@@ -132,9 +150,15 @@ async function main() {
   const totals = new Map(); // household_id → cents
   for (const inv of investments) {
     const price = priceFor(inv);
-    const qty = Number(inv.quantity);
+    const qty = Number(inv.quantity) - (soldByInvestment.get(inv.id) ?? 0);
+    // Pozycja w całości sprzedana → 0 zł, ale wiersz household zostaje
+    // (portfel spadł do zera — apka liczy tak samo, wykres to pokaże).
     const valuePln =
-      price == null ? (qty * inv.buy_price_cents) / 100 : qty * price;
+      qty <= 0
+        ? 0
+        : price == null
+          ? (qty * inv.buy_price_cents) / 100
+          : qty * price;
     const cents = Math.round(valuePln * 100);
     totals.set(inv.household_id, (totals.get(inv.household_id) ?? 0) + cents);
   }

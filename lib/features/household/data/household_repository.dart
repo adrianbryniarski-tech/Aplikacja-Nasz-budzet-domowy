@@ -24,7 +24,11 @@ class HouseholdRepository {
         .from('household_members')
         .select('household_id')
         .eq('user_id', user.id)
-        .limit(1);
+        .limit(1)
+        // Na tym zapytaniu stoi cały start aplikacji (router czeka na
+        // wynik), a zerwane łącze potrafi wisieć minutami — po timeoucie
+        // router pokaże ekran „Brak połączenia z serwerem".
+        .timeout(const Duration(seconds: 12));
     if (rows.isEmpty) return null;
     return rows.first['household_id'] as String;
   }

@@ -119,7 +119,14 @@ class PendingOpsDao {
 
     Future<void> emit() async {
       if (ctrl.isClosed) return;
-      ctrl.add(await listForHousehold(householdId));
+      try {
+        ctrl.add(await listForHousehold(householdId));
+      } on Object catch (e, st) {
+        // Bez tego odrzucony future z `listForHousehold` (np. uszkodzony
+        // plik sqflite) jest porzucany w `onListen` — konsument nie
+        // dostaje ani danych, ani błędu i wisi na spinnerze na zawsze.
+        if (!ctrl.isClosed) ctrl.addError(e, st);
+      }
     }
 
     ctrl = StreamController<List<PendingTransaction>>(
@@ -142,9 +149,14 @@ class PendingOpsDao {
 
     Future<void> emit() async {
       if (ctrl.isClosed) return;
-      final total = await countAll();
-      final errors = await countWithErrors();
-      ctrl.add((total: total, errors: errors));
+      try {
+        final total = await countAll();
+        final errors = await countWithErrors();
+        ctrl.add((total: total, errors: errors));
+      } on Object catch (e, st) {
+        // Jak w `watchForHousehold` — błąd zamiast wiecznej ciszy.
+        if (!ctrl.isClosed) ctrl.addError(e, st);
+      }
     }
 
     ctrl = StreamController<({int total, int errors})>(

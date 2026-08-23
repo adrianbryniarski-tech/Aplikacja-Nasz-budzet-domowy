@@ -36,37 +36,56 @@ class PriceService {
   final Map<String, double> _lastPrices = {};
   DateTime? _lastFetchAt;
 
+  /// Kiedy ostatnio REALNIE pobrano kursy z API (nie z cache) — do
+  /// etykiety „Kursy z HH:MM" pod wartością portfela.
+  DateTime? get lastFetchAt => _lastFetchAt;
+
+  /// Wymusza pominięcie cache przy następnym [fetchPrices] — dla ręcznego
+  /// „Odśwież kursy" / pull-to-refresh, żeby nie były cichym no-opem
+  /// w oknie [_cacheTtl].
+  void invalidateCache() => _lastFetchAt = null;
+
   /// Zwraca mapę `symbol → cena PLN za jednostkę` dla podanych pozycji.
   /// Krypto: cena za 1 coin. Złoto/srebro: cena za 1 gram.
   Future<Map<String, double>> fetchPrices(List<Investment> items) async {
     if (items.isEmpty) return {};
 
-    // Świeże dane w cache → nie pukaj do API (ochrona przed 429).
-    final lastAt = _lastFetchAt;
-    if (lastAt != null &&
-        DateTime.now().difference(lastAt) < _cacheTtl &&
-        _lastPrices.isNotEmpty) {
-      return Map.of(_lastPrices);
-    }
-
-    final result = <String, double>{};
     final cryptoIds = items
         .where((i) => i.assetType == AssetType.crypto)
         .map((i) => i.symbol)
         .toSet();
     final needsGold = items.any((i) => i.assetType == AssetType.gold);
     final needsSilver = items.any((i) => i.assetType == AssetType.silver);
+    final neededKeys = <String>{
+      ...cryptoIds,
+      if (needsGold) 'XAU',
+      if (needsSilver) 'XAG',
+    };
+
+    // Świeże dane w cache → nie pukaj do API (ochrona przed 429) — ale
+    // tylko gdy cache pokrywa WSZYSTKIE potrzebne symbole. Bez tego
+    // warunku świeżo dodane aktywo dostawało „kurs niedostępny" przez
+    // [_cacheTtl] od poprzedniego fetchu.
+    final lastAt = _lastFetchAt;
+    if (lastAt != null &&
+        DateTime.now().difference(lastAt) < _cacheTtl &&
+        _lastPrices.keys.toSet().containsAll(neededKeys)) {
+      return Map.of(_lastPrices);
+    }
+
+    final result = <String, double>{};
 
     // Równolegle — niezależne źródła.
     final futures = <Future<void>>[
-      if (cryptoIds.isNotEmpty)
-        _fetchCrypto(cryptoIds).then(result.addAll),
-      if (needsGold) _fetchGoldPlnPerGram().then((p) {
-        if (p != null) result['XAU'] = p;
-      }),
-      if (needsSilver) _fetchSilverPlnPerGram().then((p) {
-        if (p != null) result['XAG'] = p;
-      }),
+      if (cryptoIds.isNotEmpty) _fetchCrypto(cryptoIds).then(result.addAll),
+      if (needsGold)
+        _fetchGoldPlnPerGram().then((p) {
+          if (p != null) result['XAU'] = p;
+        }),
+      if (needsSilver)
+        _fetchSilverPlnPerGram().then((p) {
+          if (p != null) result['XAG'] = p;
+        }),
     ];
     await Future.wait(futures);
 

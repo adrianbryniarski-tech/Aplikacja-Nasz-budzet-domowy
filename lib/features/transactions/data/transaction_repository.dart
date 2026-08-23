@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/core/offline/pending_ops_dao.dart';
 import 'package:nasz_budzet_domowy/core/offline/pending_transaction.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_worker.dart';
@@ -106,7 +107,11 @@ class TransactionRepository {
           .from('transactions')
           .insert(pending.toSupabaseInsert())
           .select()
-          .single();
+          .single()
+          // Zawieszony socket → TimeoutException → gałąź `on Object`
+          // niżej, czyli zapis do lokalnej kolejki zamiast wiecznego
+          // kręcenia na przycisku „Zapisz".
+          .timeout(kSupabaseWriteTimeout);
       return TransactionWriteSuccess(Transaction.fromJson(row));
     } on PostgrestException catch (e) {
       // 23505 = duplikat (dedup_hash lub client_op_id). UX: "już jest".
@@ -126,6 +131,10 @@ class TransactionRepository {
   }
 
   Future<void> delete(String id) async {
-    await supabase.from('transactions').delete().eq('id', id);
+    await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+        .timeout(kSupabaseWriteTimeout);
   }
 }

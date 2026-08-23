@@ -1,3 +1,4 @@
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/core/supabase/supabase_client.dart';
 import 'package:nasz_budzet_domowy/features/budgets/data/budget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,11 +49,14 @@ class BudgetRepository {
         'amount_cents': amountCents,
         'period': 'monthly',
         'starts_on': _formatDate(startsOn),
-      });
+      }).timeout(kSupabaseWriteTimeout);
       return const BudgetWriteSuccess();
     } on PostgrestException catch (e) {
       if (e.code == '23505') return const BudgetDuplicate();
       return BudgetWriteFailure(e.message);
+    } on Object catch (e) {
+      // Timeout / brak sieci — po ludzku zamiast nieobsłużonego wyjątku.
+      return BudgetWriteFailure(humanizeError(e));
     }
   }
 
@@ -63,19 +67,29 @@ class BudgetRepository {
     try {
       await supabase
           .from('budgets')
-          .update({'amount_cents': amountCents}).eq('id', id);
+          .update({'amount_cents': amountCents})
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const BudgetWriteSuccess();
     } on PostgrestException catch (e) {
       return BudgetWriteFailure(e.message);
+    } on Object catch (e) {
+      return BudgetWriteFailure(humanizeError(e));
     }
   }
 
   Future<BudgetWriteResult> delete(String id) async {
     try {
-      await supabase.from('budgets').delete().eq('id', id);
+      await supabase
+          .from('budgets')
+          .delete()
+          .eq('id', id)
+          .timeout(kSupabaseWriteTimeout);
       return const BudgetWriteSuccess();
     } on PostgrestException catch (e) {
       return BudgetWriteFailure(e.message);
+    } on Object catch (e) {
+      return BudgetWriteFailure(humanizeError(e));
     }
   }
 

@@ -5,9 +5,10 @@ import 'package:nasz_budzet_domowy/features/categories/application/category_prov
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
 import 'package:nasz_budzet_domowy/features/categories/presentation/widgets/category_edit_sheet.dart';
 import 'package:nasz_budzet_domowy/features/categories/presentation/widgets/delete_category_dialog.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
 /// Ekran zarządzania kategoriami.
@@ -37,7 +38,11 @@ class CategoriesScreen extends ConsumerWidget {
               tooltip: 'Odśwież',
               icon: const AppIcon(Icons.refresh),
               onPressed: () {
-                ref.invalidate(categoriesProvider);
+                // Też transakcje — liczniki „ile transakcji" przy
+                // kategoriach liczą się z `transactionsProvider`.
+                ref
+                  ..invalidate(categoriesProvider)
+                  ..invalidate(transactionsProvider);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Odświeżam dane…'),
@@ -55,7 +60,9 @@ class CategoriesScreen extends ConsumerWidget {
         ),
         CupertinoSliverRefreshControl(
           onRefresh: () async {
-            ref.invalidate(categoriesProvider);
+            ref
+              ..invalidate(categoriesProvider)
+              ..invalidate(transactionsProvider);
             await Future<void>.delayed(const Duration(milliseconds: 500));
           },
         ),
@@ -64,7 +71,14 @@ class CategoriesScreen extends ConsumerWidget {
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => SliverFillRemaining(
-            child: Center(child: InlineError(message: e.toString())),
+            child: AsyncErrorState(
+              error: e,
+              onRetry: () {
+                ref
+                  ..invalidate(categoriesProvider)
+                  ..invalidate(transactionsProvider);
+              },
+            ),
           ),
           data: (categories) {
             // Mapa rodzic → posortowane podkategorie.
@@ -112,8 +126,8 @@ class CategoriesScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                     child: Text(
                       'Wydatki',
-                      style: tt.labelLarge
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                      style:
+                          tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                   ...expenseRows,
@@ -123,8 +137,8 @@ class CategoriesScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                     child: Text(
                       'Dochody',
-                      style: tt.labelLarge
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                      style:
+                          tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
                   ...incomeRows,

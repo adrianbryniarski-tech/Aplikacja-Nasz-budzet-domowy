@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +26,10 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: Env.supabaseUrl,
-    anonKey: Env.supabaseAnonKey,
+    // `anonKey` jest deprecated (CI z --fatal-infos by się wywalił);
+    // `publishableKey` przyjmuje ten sam legacy klucz anon — w pakiecie
+    // oba parametry lądują w tym samym `effectiveKey`.
+    publishableKey: Env.supabaseAnonKey,
     realtimeClientOptions: const RealtimeClientOptions(eventsPerSecond: 10),
   );
 
@@ -66,6 +71,10 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
     // małżonka nigdy nie dotrą. Re-subscribe = nowe połączenie + pierwszy
     // SELECT z aktualnym stanem.
     if (state == AppLifecycleState.resumed) {
+      // Od razu spróbuj wysłać zaległą kolejkę offline. Bez tego, gdy
+      // telefon był cały czas online a padał tylko serwer, kolejka
+      // czekała aż do zmiany connectivity albo ręcznego tapnięcia.
+      unawaited(ref.read(syncWorkerProvider).syncNow());
       ref
         ..invalidate(transactionsProvider)
         ..invalidate(categoriesProvider)

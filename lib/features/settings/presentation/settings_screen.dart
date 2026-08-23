@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/features/animations/application/animation_settings.dart';
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
@@ -408,7 +409,7 @@ class _HouseholdInfoCard extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Błąd: $e',
+            humanizeError(e),
             style: TextStyle(color: theme.colorScheme.error),
           ),
         ),
@@ -472,7 +473,7 @@ class _HouseholdInfoCard extends ConsumerWidget {
                     child: LinearProgressIndicator(),
                   ),
                   error: (e, _) => Text(
-                    'Nie udało się pobrać listy: $e',
+                    humanizeError(e),
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
                   data: (members) {
@@ -525,7 +526,7 @@ class _HouseholdInfoCard extends ConsumerWidget {
                             members.length == 1
                                 ? 'Tylko Ty jesteś w tym gospodarstwie. '
                                     'Żona musi się dołączyć przez kod '
-                                    'zaproszenia (zakładka Transakcje → 👤+).'
+                                    'zaproszenia (zakładka Pulpit → 👤+).'
                                 : 'W gospodarstwie ${members.length} '
                                     'członków — transakcje są wspólne.',
                             style: theme.textTheme.bodySmall,

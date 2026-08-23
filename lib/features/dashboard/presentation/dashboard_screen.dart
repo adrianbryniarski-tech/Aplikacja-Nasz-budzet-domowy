@@ -18,7 +18,7 @@ import 'package:nasz_budzet_domowy/features/household/presentation/invite_partne
 import 'package:nasz_budzet_domowy/features/investments/application/investment_providers.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/sync_status_indicator.dart';
 
@@ -121,7 +121,14 @@ class DashboardScreen extends ConsumerWidget {
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => SliverFillRemaining(
-            child: Center(child: InlineError(message: e.toString())),
+            child: AsyncErrorState(
+              error: e,
+              onRetry: () {
+                ref
+                  ..invalidate(transactionsProvider)
+                  ..invalidate(categoriesProvider);
+              },
+            ),
           ),
           data: (summary) {
             final categories = categoriesAsync.value ?? const [];
@@ -143,8 +150,7 @@ class DashboardScreen extends ConsumerWidget {
                   IncomeExpenseBarTile(summary: summary),
                   RunningBalanceTile(summary: summary),
                 ]),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 1,
                   childAspectRatio: 1.35,
                   mainAxisSpacing: 12,

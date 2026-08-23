@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/features/animations/presentation/animation_player.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
@@ -53,8 +54,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   void _applyVoiceResult(VoiceParseResult result) {
     setState(() {
       if (result.amountCents != null) {
-        _amountController.text =
-            (result.amountCents! / 100).toStringAsFixed(2);
+        _amountController.text = (result.amountCents! / 100).toStringAsFixed(2);
       }
       if (result.occurredAt != null) {
         _occurredAt = result.occurredAt!;
@@ -139,8 +139,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       amountCents: amountCents,
       type: _type,
       categoryId: _category!.id,
-      source:
-          _fromVoice ? TransactionSource.voice : TransactionSource.manual,
+      source: _fromVoice ? TransactionSource.voice : TransactionSource.manual,
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
@@ -355,7 +354,7 @@ class _CategoryPickerField extends StatelessWidget {
         ),
       ),
       error: (e, _) => _CategoryFieldShell(
-        child: Text('Błąd: $e'),
+        child: Text(humanizeError(e)),
       ),
       data: (_) {
         // Grupujemy: kategoria główna, a pod nią wcięte podkategorie.
@@ -364,8 +363,7 @@ class _CategoryPickerField extends StatelessWidget {
         // Zaznaczona wartość MUSI być dokładnie jednym z elementów listy —
         // inaczej DropdownButton rzuca asercję. Wyznaczamy ją z aktualnej
         // listy po `id` (gdy kategorii już nie ma / zła dla typu → null).
-        final value =
-            ordered.where((c) => c.id == selected?.id).firstOrNull;
+        final value = ordered.where((c) => c.id == selected?.id).firstOrNull;
         return DropdownButtonFormField<Category>(
           // `key` per typ wymusza rebuild dropdownu gdy user przełączy
           // wydatek↔dochód — inaczej wewnętrzny stan FormField może
@@ -391,8 +389,8 @@ class _CategoryPickerField extends StatelessWidget {
                           child: Icon(
                             Icons.subdirectory_arrow_right,
                             size: 16,
-                            color: Theme.of(context).colorScheme
-                                .onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       CategoryAvatar(category: c, size: 28),
