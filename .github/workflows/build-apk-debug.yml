@@ -29,6 +29,9 @@ jobs:
     name: Build debug APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # contents: write — krok „Publish APK" tworzy/aktualizuje release „apk".
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -119,3 +122,23 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Stały link do pobrania na telefonie: surowy plik .apk w rolling
+      # release „apk" (artefakt Actions to zip i wymaga zalogowania).
+      # Najnowsza wersja jest zawsze pod:
+      # https://github.com/adrianbryniarski-tech/Aplikacja-Nasz-budzet-domowy/releases/latest/download/nasz-budzet-domowy.apk
+      - name: Publish APK to rolling release „apk"
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          cp build/app/outputs/flutter-apk/app-debug.apk nasz-budzet-domowy.apk
+          notes="Najnowsza wersja testowa (debug signing). Zaktualizowano: $(date -u '+%Y-%m-%d %H:%M UTC'), commit ${GITHUB_SHA::7}. Przed instalacją odinstaluj poprzednią wersję, jeśli instalator zgłosi konflikt podpisu."
+          if gh release view apk >/dev/null 2>&1; then
+            gh release edit apk --title "Najnowszy APK" --notes "$notes" --latest
+          else
+            gh release create apk --title "Najnowszy APK" --notes "$notes" --latest
+          fi
+          gh release upload apk nasz-budzet-domowy.apk --clobber
+          echo "✅ APK w release: https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/nasz-budzet-domowy.apk"
