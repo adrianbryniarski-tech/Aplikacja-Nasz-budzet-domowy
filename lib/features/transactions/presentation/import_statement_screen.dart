@@ -38,7 +38,10 @@ class _ImportRow {
     required this.entry,
     required this.categoryId,
     required this.autoMatched,
-  });
+    this.suspectedDuplicate = false,
+  }) {
+    selected = !suspectedDuplicate;
+  }
 
   final StatementEntry entry;
   String categoryId;
@@ -47,7 +50,12 @@ class _ImportRow {
   /// „Inne" do przejrzenia.
   final bool autoMatched;
 
-  bool selected = true;
+  /// W bazie jest już transakcja z tym samym DNIEM, kwotą i typem —
+  /// pewnie dodana ręcznie (inny opis, więc twardy dedup jej nie złapie).
+  /// Domyślnie odznaczamy; user może zaznaczyć z powrotem.
+  final bool suspectedDuplicate;
+
+  late bool selected;
 
   /// User ręcznie zmienił kategorię → po zapisie uczymy się reguły.
   bool touchedByUser = false;
@@ -89,11 +97,25 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
       }
       final categories =
           ref.read(categoriesProvider).value ?? const <Category>[];
-      final rules =
-          await ref.read(importRepositoryProvider).merchantRules(householdId);
+      final importRepo = ref.read(importRepositoryProvider);
+      final rules = await importRepo.merchantRules(householdId);
       final categorizer = StatementCategorizer(
         categories: categories,
         learnedRules: rules,
+      );
+
+      // Miękkie odciski istniejących wpisów w zakresie dat wyciągu —
+      // wiersze „chyba już dodane ręcznie" odznaczymy domyślnie.
+      var from = parsed.entries.first.occurredAt;
+      var to = from;
+      for (final e in parsed.entries) {
+        if (e.occurredAt.isBefore(from)) from = e.occurredAt;
+        if (e.occurredAt.isAfter(to)) to = e.occurredAt;
+      }
+      final softKeys = await importRepo.existingSoftKeys(
+        householdId: householdId,
+        from: from,
+        to: to,
       );
 
       final rows = <_ImportRow>[];
@@ -108,6 +130,13 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
             entry: entry,
             categoryId: categoryId,
             autoMatched: suggested != null,
+            suspectedDuplicate: softKeys.contains(
+              ImportRepository.softKey(
+                entry.occurredAt,
+                entry.amountCents,
+                entry.type,
+              ),
+            ),
           ),
         );
       }
@@ -276,6 +305,9 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
   Widget _buildPreview(ThemeData theme, StatementParseResult parsed) {
     final selectedCount = _rows.where((r) => r.selected).length;
     final toReview = _rows.where((r) => !r.autoMatched).length;
+    final suspected = _rows.where((r) => r.suspectedDuplicate).length;
+    final suspectedInfo = '$suspected chyba już jest w budżecie '
+        '(odznaczone — zaznacz, jeśli to co innego)';
     final skipped = parsed.skippedNonPln + parsed.skippedOther;
     final categoriesById = {
       for (final c in ref.watch(categoriesProvider).value ?? const <Category>[])
@@ -299,6 +331,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                   const SizedBox(height: 4),
                   Text(
                     [
+                      if (suspected > 0) suspectedInfo,
                       if (toReview > 0)
                         '$toReview do przejrzenia (oznaczone kolorem)',
                       if (skipped > 0) 'pominięto $skipped (waluta/w toku)',
@@ -426,6 +459,30 @@ class _ImportRowTile extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (row.suspectedDuplicate) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'W budżecie jest już wpis z tym dniem, kwotą '
+                    'i typem — pewnie dodany ręcznie.',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'chyba już jest',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: 8),
             Flexible(
               child: ActionChip(
