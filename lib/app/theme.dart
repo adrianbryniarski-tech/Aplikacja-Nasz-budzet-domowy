@@ -242,11 +242,12 @@ class AppTheme {
       scaffoldBackgroundColor: spec.background,
       textTheme: textTheme,
       // Nowoczesne przejścia między ekranami (Android 15 „fade forwards"
-      // zamiast domyślnego zoomu) + natywny gest wstecz na iOS.
+      // zamiast domyślnego zoomu). Tylko Android — apka nie buduje się na
+      // iOS, a builder Cupertino wyleciał z nowszych wersji Fluttera
+      // (build padał na „Method not found" przy stable 3.47).
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
       ),
       cardTheme: CardThemeData(
