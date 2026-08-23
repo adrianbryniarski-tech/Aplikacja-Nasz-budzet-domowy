@@ -271,7 +271,8 @@ class HelpScreen extends StatelessWidget {
                   'z własnymi ikonami, Kredka, Dragon Ball, Pokémon, Aurora) '
                   '+ tryb jasny/ciemny. Każdy ma inne kolory, czcionkę '
                   'i kształty.',
-              'Niżej — włącz/wyłącz pojedyncze animacje i dźwięki.',
+              'Niżej — włącz/wyłącz pojedyncze animacje i dźwięki, '
+                  'a także delikatne wibracje przy akcjach.',
             ],
           ),
           _HelpSection(

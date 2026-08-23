@@ -241,6 +241,14 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: spec.background,
       textTheme: textTheme,
+      // Nowoczesne przejścia między ekranami (Android 15 „fade forwards"
+      // zamiast domyślnego zoomu) + natywny gest wstecz na iOS.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       cardTheme: CardThemeData(
         color: spec.surface,
         elevation: spec.cardElevation,

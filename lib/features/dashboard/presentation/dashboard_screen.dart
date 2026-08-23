@@ -21,6 +21,7 @@ import 'package:nasz_budzet_domowy/features/settings/application/theme_providers
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/skeleton.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/sync_status_indicator.dart';
 
 /// Ekran główny — bento grid z podsumowaniem finansów.
@@ -121,8 +122,10 @@ class DashboardScreen extends ConsumerWidget {
         // panel „Wykorzystanie limitów", więc baner tylko w klasycznym.
         if (!isManga) const SliverToBoxAdapter(child: BudgetAlertsBanner()),
         summaryAsync.when(
+          // Szkielet układu zamiast kółka — pulpit od razu wygląda jak
+          // pulpit, tylko „wyszarzony" do czasu danych.
           loading: () => const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator()),
+            child: DashboardSkeleton(),
           ),
           error: (e, _) => SliverFillRemaining(
             child: AsyncErrorState(

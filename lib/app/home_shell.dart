@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
+import 'package:nasz_budzet_domowy/core/haptics.dart';
 import 'package:nasz_budzet_domowy/features/budgets/presentation/budgets_screen.dart';
 import 'package:nasz_budzet_domowy/features/categories/presentation/categories_screen.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/dashboard_screen.dart';
@@ -10,6 +11,7 @@ import 'package:nasz_budzet_domowy/features/onboarding/presentation/whats_new_sc
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/transactions_list_screen.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/brand_watermark.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/fade_indexed_stack.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/glowing_button.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/neon_gradient_background.dart';
@@ -100,7 +102,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: NeonGradientBackground(
         child: Stack(
           children: [
-            IndexedStack(
+            FadeIndexedStack(
               index: _index,
               children: _screens,
             ),
@@ -112,7 +114,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          ref.read(hapticsProvider).tap();
+          setState(() => _index = i);
+        },
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           if (isManga)
@@ -155,11 +160,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       floatingActionButton: GlowingFAB(
-        onPressed: () => context.push(
-          _index == _investmentsIndex
-              ? '/investments/add'
-              : '/transactions/add',
-        ),
+        onPressed: () {
+          ref.read(hapticsProvider).success();
+          context.push(
+            _index == _investmentsIndex
+                ? '/investments/add'
+                : '/transactions/add',
+          );
+        },
         tooltip: _index == _investmentsIndex
             ? 'Dodaj inwestycję'
             : 'Dodaj transakcję',

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
+import 'package:nasz_budzet_domowy/core/haptics.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
@@ -18,6 +19,7 @@ import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/skeleton.dart';
 
 /// Lista transakcji bieżącego gospodarstwa.
 /// Renderuje się jako CustomScrollView (bez własnego Scaffold) —
@@ -131,8 +133,9 @@ class _TransactionsListScreenState
           },
         ),
         transactions.when(
+          // Szkielet wierszy zamiast kółka — lista od razu „ma kształt".
           loading: () => const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator()),
+            child: TransactionsSkeleton(),
           ),
           error: (e, _) => SliverFillRemaining(
             child: AsyncErrorState(
@@ -491,6 +494,7 @@ class _DismissibleTransactionRow extends ConsumerWidget {
         // KROK 1 (SYNC, natychmiast): ukrywamy item w parent — Dismissible
         // może teraz bez problemu zniknąć z drzewa.
         onDeleteLocally(transaction.id);
+        ref.read(hapticsProvider).impact();
         final messenger = ScaffoldMessenger.of(context);
         // KROK 2 (ASYNC): faktyczny delete w DB / kolejce. Po sukcesie
         // Realtime przyniesie DELETE event i provider odświeży listę
