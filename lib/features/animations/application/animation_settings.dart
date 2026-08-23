@@ -19,8 +19,7 @@ enum AppAnimation {
   ),
   expenseFlashOnExpense(
     label: 'Czerwony błysk przy wydatku',
-    description:
-        'Krótki czerwony pulse na ekranie po zapisaniu wydatku.',
+    description: 'Krótki czerwony pulse na ekranie po zapisaniu wydatku.',
   ),
   budgetSparkleOnCreate(
     label: 'Iskry przy nowym budżecie',
@@ -33,8 +32,7 @@ enum AppAnimation {
   ),
   carRushOnTransport(
     label: 'Samochód z dymem i pieniędzmi',
-    description:
-        'Transport / Paliwo: 🚗 przelatuje przez ekran zostawiając '
+    description: 'Transport / Paliwo: 🚗 przelatuje przez ekran zostawiając '
         '💨 i 💸 za sobą.',
   ),
   pharmacyHealOnHealth(
@@ -45,21 +43,18 @@ enum AppAnimation {
   ),
   billsAttackOnBills(
     label: 'Rachunki w ogniu',
-    description:
-        'Rachunki / Internet / Prąd: 📄 spadają z każdej strony do '
+    description: 'Rachunki / Internet / Prąd: 📄 spadają z każdej strony do '
         'środka, zapalają się 🔥, a pieniądze 💸 ulatują w górę.',
   ),
   categoryEmojiRain(
     label: 'Eksplodujące emoji dla pozostałych kategorii',
-    description:
-        'Pozostałe kategorie (Dzieci, Rozrywka, Mieszkanie itd.): '
+    description: 'Pozostałe kategorie (Dzieci, Rozrywka, Mieszkanie itd.): '
         'tematyczne emoji wybuchają ze środka ekranu z rotacją '
         'i pulsem skali.',
   ),
   chaChingOnIncome(
     label: 'Cash register "cha-ching!" przy dochodzie',
-    description:
-        'Krótki dźwięk dzwonka kasy fiskalnej (~0.5s) gdy zapiszesz '
+    description: 'Krótki dźwięk dzwonka kasy fiskalnej (~0.5s) gdy zapiszesz '
         'dochód. Razem z deszczem monet to brzmi jak ABBA bez ABBY.',
   );
 

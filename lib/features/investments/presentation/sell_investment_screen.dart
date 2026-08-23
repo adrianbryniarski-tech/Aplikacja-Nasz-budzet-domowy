@@ -133,8 +133,7 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
       final lossCents = (loss * 100).round();
       if (lossCents > costBasisCents) {
         setState(
-          () => _error =
-              'Strata nie może przekroczyć kosztu zakupu tej części '
+          () => _error = 'Strata nie może przekroczyć kosztu zakupu tej części '
               '(${_fmtPln(costBasisCents / 100)}).',
         );
         return;
@@ -195,7 +194,6 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               Row(
                 children: [
                   Text('Ile sprzedajesz', style: theme.textTheme.labelLarge),
@@ -225,7 +223,6 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
                     _parsePositive(v ?? '') == null ? 'Wpisz ilość' : null,
               ),
               const SizedBox(height: 20),
-
               Text('Data sprzedaży', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -243,7 +240,6 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               Text('Jak wpisać wynik', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               SegmentedButton<_ResultMode>(
@@ -292,12 +288,10 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
                           'Wpisz 0 przy całkowitej stracie.'
                       : 'Kwota, którą straciłeś na tej części.',
                 ),
-                validator: (v) => _parseNonNegative(v ?? '') == null
-                    ? 'Wpisz kwotę'
-                    : null,
+                validator: (v) =>
+                    _parseNonNegative(v ?? '') == null ? 'Wpisz kwotę' : null,
               ),
               const SizedBox(height: 16),
-
               _ResultPreview(
                 mode: _mode,
                 quantity: _parsePositive(_qtyController.text),
@@ -305,7 +299,6 @@ class _SellInvestmentScreenState extends ConsumerState<SellInvestmentScreen> {
                 value: _parseNonNegative(_valueController.text),
               ),
               const SizedBox(height: 24),
-
               if (_error != null) ...[
                 InlineError(message: _error!),
                 const SizedBox(height: 16),

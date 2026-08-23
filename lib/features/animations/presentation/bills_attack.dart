@@ -97,8 +97,7 @@ class _BillsAttackState extends State<BillsAttack>
           if (moneyT == 0) return const SizedBox.shrink();
           final offsetX = (i - 2) * 50.0;
           final rise = moneyT * 200;
-          final moneyOpacity =
-              moneyT < 0.7 ? 1.0 : (1 - (moneyT - 0.7) / 0.3);
+          final moneyOpacity = moneyT < 0.7 ? 1.0 : (1 - (moneyT - 0.7) / 0.3);
           return Positioned(
             left: centerX + offsetX - 20,
             top: centerY - rise,

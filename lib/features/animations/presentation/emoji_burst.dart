@@ -129,8 +129,7 @@ class _BurstPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * 0.5);
     for (final p in particles) {
-      final localT =
-          ((t - p.startDelay) / (1 - p.startDelay)).clamp(0.0, 1.0);
+      final localT = ((t - p.startDelay) / (1 - p.startDelay)).clamp(0.0, 1.0);
       if (localT == 0) continue;
 
       final radial = Curves.easeOut.transform(localT) * p.distance;
@@ -139,10 +138,8 @@ class _BurstPainter extends CustomPainter {
       final x = center.dx + cos(p.angle) * radial;
       final y = center.dy + sin(p.angle) * radial + fall;
 
-      final scale =
-          1.0 + p.scaleWave * sin(localT * pi * 3) * (1 - localT);
-      final opacity =
-          localT < 0.7 ? 1.0 : (1 - (localT - 0.7) / 0.3);
+      final scale = 1.0 + p.scaleWave * sin(localT * pi * 3) * (1 - localT);
+      final opacity = localT < 0.7 ? 1.0 : (1 - (localT - 0.7) / 0.3);
       final rotation = p.rotationSpeed * localT;
 
       final tp = TextPainter(

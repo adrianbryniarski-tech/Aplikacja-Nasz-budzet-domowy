@@ -182,9 +182,8 @@ class _BudgetEditSheetState extends ConsumerState<BudgetEditSheet> {
                     ),
                   ),
               ],
-              onChanged: _isEdit
-                  ? null
-                  : (v) => setState(() => _categoryId = v),
+              onChanged:
+                  _isEdit ? null : (v) => setState(() => _categoryId = v),
             ),
             const SizedBox(height: 16),
             TextField(

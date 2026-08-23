@@ -39,23 +39,32 @@ jobs:
         run: |
           flutter create --platforms=android --org=pl.naszbudzetdomowy --project-name=nasz_budzet_domowy .
 
+      # UWAGA: `shell: bash` jest tu krytyczne. Jawne `shell: bash` włącza
+      # `-o pipefail`; domyślny shell kroku go NIE ma, więc `cmd | tee`
+      # zwracał zawsze exit code tee (0) — format/analyze/testy NIGDY nie
+      # oblewały joba (log z 11.06: „Formatted 119 files (31 changed)"
+      # i krok zielony). Odkryte 23.08.2026 przy diagnozie awarii.
       - name: Install dependencies
         id: pub_get
+        shell: bash
         run: flutter pub get 2>&1 | tee /tmp/pub_get.log
 
       - name: Verify formatting
         id: fmt
         if: always() && steps.pub_get.conclusion == 'success'
+        shell: bash
         run: dart format --output=none --set-exit-if-changed lib test 2>&1 | tee /tmp/fmt.log
 
       - name: Analyze
         id: analyze
         if: always() && steps.pub_get.conclusion == 'success'
+        shell: bash
         run: flutter analyze --fatal-infos 2>&1 | tee /tmp/analyze.log
 
       - name: Run tests
         id: tests
         if: always() && steps.pub_get.conclusion == 'success'
+        shell: bash
         run: flutter test --coverage --reporter=expanded 2>&1 | tee /tmp/tests.log
 
       - name: Upload coverage artefact

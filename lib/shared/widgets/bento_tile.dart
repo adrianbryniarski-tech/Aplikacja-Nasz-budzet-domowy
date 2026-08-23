@@ -41,9 +41,8 @@ class BentoTile extends ConsumerWidget {
           )
         : RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: isComic
-                ? BorderSide(color: ink, width: 2.5)
-                : BorderSide.none,
+            side:
+                isComic ? BorderSide(color: ink, width: 2.5) : BorderSide.none,
           );
 
     final card = Card(

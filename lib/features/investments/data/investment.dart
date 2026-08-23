@@ -137,9 +137,8 @@ class InvestmentValuation {
       remainingQuantity * investment.buyPriceCents / 100;
 
   /// Aktualna wartość POZOSTAŁEJ części w PLN.
-  double get currentValuePln => pricePln == null
-      ? remainingBuyValuePln
-      : remainingQuantity * pricePln!;
+  double get currentValuePln =>
+      pricePln == null ? remainingBuyValuePln : remainingQuantity * pricePln!;
 
   /// Zysk/strata w PLN (dodatni = zysk) — tylko część pozostała.
   double get profitPln => currentValuePln - remainingBuyValuePln;

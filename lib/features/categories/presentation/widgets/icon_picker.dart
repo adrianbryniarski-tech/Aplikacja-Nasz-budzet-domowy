@@ -60,8 +60,7 @@ class _IconPickerState extends State<IconPicker> {
     final q = _query.toLowerCase();
     return _all
         .where(
-          (e) =>
-              e.name.contains(q) || e.tags.any((t) => t.contains(q)),
+          (e) => e.name.contains(q) || e.tags.any((t) => t.contains(q)),
         )
         .toList();
   }
@@ -101,8 +100,7 @@ class _IconPickerState extends State<IconPicker> {
                 )
               : GridView.builder(
                   padding: EdgeInsets.zero,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 6,
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
