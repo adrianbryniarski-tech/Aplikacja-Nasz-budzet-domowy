@@ -34,17 +34,25 @@ class TransactionPrefill {
   final TransactionType? type;
 }
 
-/// Form ręcznego dodawania transakcji.
+/// Form dodawania LUB edycji transakcji.
 ///
 /// Pola: typ (segmented control), kwota, kategoria (filtrowana po typie),
 /// data (datepicker), opis (opcjonalny), notatka (opcjonalna).
+/// Nad listą kategorii chipy z najczęściej używanymi — jeden tap zamiast
+/// szukania w dropdownie.
+///
+/// Tryb edycji: podaj [existing] — formularz startuje z wartościami
+/// transakcji i zapis robi UPDATE zamiast INSERT.
 ///
 /// Walidacje są inline na poszczególnych polach; submit blokowany dopóki
 /// wszystkie poprawne. Po sukcesie wraca do ekranu listy.
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({this.prefill, super.key});
+  const AddTransactionScreen({this.prefill, this.existing, super.key});
 
   final TransactionPrefill? prefill;
+
+  /// Transakcja do edycji (null = tryb dodawania).
+  final Transaction? existing;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -85,9 +93,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     });
   }
 
+  /// W trybie edycji: id kategorii z transakcji — obiekt [Category]
+  /// dobieramy dopiero gdy provider kategorii się załaduje.
+  String? _initialCategoryId;
+
+  bool get _isEditing => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      _amountController.text = (existing.amountCents / 100).toStringAsFixed(2);
+      _descriptionController.text = existing.description ?? '';
+      _noteController.text = existing.note ?? '';
+      _occurredAt = existing.occurredAt;
+      _type = existing.type;
+      _initialCategoryId = existing.categoryId;
+      return;
+    }
     final prefill = widget.prefill;
     if (prefill != null) {
       if (prefill.amountCents != null) {
@@ -100,6 +124,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       if (prefill.occurredAt != null) _occurredAt = prefill.occurredAt!;
       if (prefill.type != null) _type = prefill.type!;
     }
+  }
+
+  /// Aktualnie wybrana kategoria: jawny wybór usera albo (w edycji)
+  /// kategoria transakcji rozwiązana z załadowanej listy.
+  Category? _resolveCategory(List<Category> all) {
+    if (_category != null) return _category;
+    final id = _initialCategoryId;
+    if (id == null) return null;
+    for (final c in all) {
+      if (c.id == id && c.type == _type) return c;
+    }
+    return null;
   }
 
   @override
@@ -143,10 +179,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_category == null) {
+    final category =
+        _resolveCategory(ref.read(categoriesProvider).value ?? const []);
+    if (category == null) {
       setState(() => _errorMessage = 'Wybierz kategorię.');
       return;
     }
+    _category = category;
 
     final householdId = ref.read(currentHouseholdIdProvider).value;
     if (householdId == null) {
@@ -168,27 +207,64 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     });
 
     final repo = ref.read(transactionRepositoryProvider);
-    final result = await repo.insert(
-      householdId: householdId,
-      occurredAt: _occurredAt,
-      amountCents: amountCents,
-      type: _type,
-      categoryId: _category!.id,
-      source: _fromVoice ? TransactionSource.voice : TransactionSource.manual,
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      note: _noteController.text.trim().isEmpty
-          ? null
-          : _noteController.text.trim(),
-    );
+    final description = _descriptionController.text.trim().isEmpty
+        ? null
+        : _descriptionController.text.trim();
+    final note = _noteController.text.trim().isEmpty
+        ? null
+        : _noteController.text.trim();
+
+    // Zapis z propozycji powiadomienia → miękka kontrola dubli: o tej samej
+    // płatności mógł już wpis zrobić drugi telefon (innym tekstem, więc
+    // twardy dedup_hash nie zadziała). Pytamy zamiast blokować.
+    if (!_isEditing && widget.prefill != null) {
+      final similar = await repo.findSameDay(
+        householdId: householdId,
+        amountCents: amountCents,
+        type: _type,
+        occurredAt: _occurredAt,
+      );
+      if (!mounted) return;
+      if (similar.isNotEmpty) {
+        final proceed = await _confirmPossibleDuplicate(similar.first);
+        if (!mounted) return;
+        if (!proceed) {
+          setState(() => _isSaving = false);
+          return;
+        }
+      }
+    }
+
+    final TransactionWriteResult result;
+    if (_isEditing) {
+      result = await repo.update(
+        id: widget.existing!.id,
+        occurredAt: _occurredAt,
+        amountCents: amountCents,
+        type: _type,
+        categoryId: category.id,
+        description: description,
+        note: note,
+      );
+    } else {
+      result = await repo.insert(
+        householdId: householdId,
+        occurredAt: _occurredAt,
+        amountCents: amountCents,
+        type: _type,
+        categoryId: category.id,
+        source: _fromVoice ? TransactionSource.voice : TransactionSource.manual,
+        description: description,
+        note: note,
+      );
+    }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
 
     switch (result) {
       case TransactionWriteSuccess():
-        _playSuccessAnimation();
+        if (!_isEditing) _playSuccessAnimation();
         context.pop(true);
       case TransactionWriteQueued():
         // Brak sieci → zapisane lokalnie. UX: zamykamy formularz tak samo
@@ -211,6 +287,39 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
   }
 
+  /// Dialog „ten wydatek chyba już jest" — pokazuje istniejący wpis
+  /// i pyta, czy na pewno dodać drugi.
+  Future<bool> _confirmPossibleDuplicate(Transaction match) async {
+    final amount =
+        NumberFormat('#,##0.00', 'pl_PL').format(match.amountCents / 100);
+    final date = DateFormat('d MMMM', 'pl_PL').format(match.occurredAt);
+    final label = (match.description?.trim().isNotEmpty ?? false)
+        ? '„${match.description!.trim()}"'
+        : 'bez opisu';
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ten wydatek chyba już jest'),
+        content: Text(
+          'W budżecie jest już wpis na $amount zł z $date ($label) — '
+          'mógł go dodać drugi domownik albo import.\n\n'
+          'Dodać mimo to drugi raz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Nie dodawaj'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Dodaj mimo to'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -223,16 +332,25 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(_occurredAt);
 
     final allCategories = categoriesAsync.value ?? const <Category>[];
+    final selectedCategory = _resolveCategory(allCategories);
+    final recentTxs =
+        ref.watch(transactionsProvider).value ?? const <Transaction>[];
+    final quickCategories = topCategories(
+      transactions: recentTxs,
+      candidates: filteredCategories,
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nowa transakcja'),
+        title: Text(_isEditing ? 'Edytuj transakcję' : 'Nowa transakcja'),
         actions: [
-          VoiceInputButton(
-            categories: allCategories,
-            onResult: _applyVoiceResult,
-          ),
-          const SizedBox(width: 8),
+          if (!_isEditing) ...[
+            VoiceInputButton(
+              categories: allCategories,
+              onResult: _applyVoiceResult,
+            ),
+            const SizedBox(width: 8),
+          ],
         ],
       ),
       body: SafeArea(
@@ -275,10 +393,18 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 },
               ),
               const SizedBox(height: 16),
+              if (quickCategories.isNotEmpty) ...[
+                _QuickCategoryChips(
+                  categories: quickCategories,
+                  selected: selectedCategory,
+                  onChanged: (c) => setState(() => _category = c),
+                ),
+                const SizedBox(height: 10),
+              ],
               _CategoryPickerField(
                 categoriesAsync: categoriesAsync,
                 items: filteredCategories,
-                selected: _category,
+                selected: selectedCategory,
                 onChanged: (c) => setState(() => _category = c),
               ),
               const SizedBox(height: 16),
@@ -331,6 +457,56 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Najczęściej używane kategorie (po liczbie transakcji w gospodarstwie),
+/// ograniczone do [candidates] — listy już przefiltrowanej po typie.
+/// Zasila szybkie chipy nad dropdownem kategorii.
+List<Category> topCategories({
+  required List<Transaction> transactions,
+  required List<Category> candidates,
+  int max = 5,
+}) {
+  if (candidates.isEmpty) return const [];
+  final counts = <String, int>{};
+  for (final t in transactions) {
+    counts.update(t.categoryId, (v) => v + 1, ifAbsent: () => 1);
+  }
+  final used = [
+    for (final c in candidates)
+      if ((counts[c.id] ?? 0) > 0) c,
+  ]..sort((a, b) => (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0));
+  return used.take(max).toList();
+}
+
+/// Chipy szybkiego wyboru kategorii — top 5 najczęściej używanych.
+class _QuickCategoryChips extends StatelessWidget {
+  const _QuickCategoryChips({
+    required this.categories,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<Category> categories;
+  final Category? selected;
+  final ValueChanged<Category> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final c in categories)
+          ChoiceChip(
+            avatar: CategoryAvatar(category: c, size: 22),
+            label: Text(c.name),
+            selected: c.id == selected?.id,
+            onSelected: (_) => onChanged(c),
+          ),
+      ],
     );
   }
 }

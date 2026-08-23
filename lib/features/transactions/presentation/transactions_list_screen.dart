@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
+import 'package:nasz_budzet_domowy/features/transactions/data/transaction_repository.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
@@ -39,12 +42,36 @@ class _TransactionsListScreenState
   /// listę bez tego ID — wtedy nie trzeba już ukrywać.
   final Set<String> _locallyDeleted = {};
 
+  final _searchController = TextEditingController();
+  bool _searchOpen = false;
+  String _query = '';
+  TransactionType? _typeFilter;
+
+  bool get _hasActiveFilter => _query.trim().isNotEmpty || _typeFilter != null;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _onDeleteLocally(String transactionId) {
     setState(() => _locallyDeleted.add(transactionId));
   }
 
   void _onDeleteFailed(String transactionId) {
     setState(() => _locallyDeleted.remove(transactionId));
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (!_searchOpen) {
+        _searchController.clear();
+        _query = '';
+        _typeFilter = null;
+      }
+    });
   }
 
   @override
@@ -57,6 +84,10 @@ class _TransactionsListScreenState
         (transactions.value ?? const <Transaction>[]).map((t) => t.id).toSet();
     _locallyDeleted.removeWhere((id) => !visibleIds.contains(id));
 
+    final categoriesMap = {
+      for (final c in categories.value ?? const <Category>[]) c.id: c,
+    };
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -66,12 +97,26 @@ class _TransactionsListScreenState
           snap: true,
           actions: [
             IconButton(
+              tooltip: _searchOpen ? 'Zamknij szukanie' : 'Szukaj',
+              icon: AppIcon(_searchOpen ? Icons.search_off : Icons.search),
+              onPressed: _toggleSearch,
+            ),
+            IconButton(
               tooltip: 'Import z banku',
               icon: const AppIcon(Icons.upload_file),
               onPressed: () => context.push('/transactions/import'),
             ),
           ],
         ),
+        if (_searchOpen)
+          SliverToBoxAdapter(
+            child: _SearchBar(
+              controller: _searchController,
+              typeFilter: _typeFilter,
+              onQueryChanged: (q) => setState(() => _query = q),
+              onTypeChanged: (t) => setState(() => _typeFilter = t),
+            ),
+          ),
         // Propozycje z powiadomień banku (beta) — baner nad listą,
         // znika gdy kolejka pusta.
         const SliverToBoxAdapter(child: _BankSuggestionsBanner()),
@@ -102,14 +147,21 @@ class _TransactionsListScreenState
           data: (txs) {
             // Filtruj lokalnie usunięte przed renderowaniem — Dismissible
             // wymaga że po onDismissed widget natychmiast zniknie z drzewa.
-            final visibleTxs =
+            var visibleTxs =
                 txs.where((t) => !_locallyDeleted.contains(t.id)).toList();
+            visibleTxs = filterTransactions(
+              transactions: visibleTxs,
+              categoriesById: categoriesMap,
+              query: _query,
+              type: _typeFilter,
+            );
             if (visibleTxs.isEmpty) {
-              return const SliverFillRemaining(child: _EmptyState());
+              return SliverFillRemaining(
+                child: _hasActiveFilter
+                    ? const _NoSearchResults()
+                    : const _EmptyState(),
+              );
             }
-            final categoriesMap = {
-              for (final c in categories.value ?? const <Category>[]) c.id: c,
-            };
             return _TransactionsList(
               transactions: visibleTxs,
               categoriesById: categoriesMap,
@@ -119,6 +171,127 @@ class _TransactionsListScreenState
           },
         ),
       ],
+    );
+  }
+}
+
+/// Filtr listy: tekst (opis / notatka / nazwa kategorii, bez rozróżniania
+/// wielkości liter) + opcjonalny typ. Wystawiony jako top-level do testów.
+List<Transaction> filterTransactions({
+  required List<Transaction> transactions,
+  required Map<String, Category> categoriesById,
+  required String query,
+  TransactionType? type,
+}) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty && type == null) return transactions;
+  return [
+    for (final t in transactions)
+      if ((type == null || t.type == type) &&
+          (q.isEmpty ||
+              (t.description?.toLowerCase().contains(q) ?? false) ||
+              (t.note?.toLowerCase().contains(q) ?? false) ||
+              (categoriesById[t.categoryId]?.name.toLowerCase().contains(q) ??
+                  false)))
+        t,
+  ];
+}
+
+/// Pole szukania + chipy typu (Wszystkie / Wydatki / Dochody).
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({
+    required this.controller,
+    required this.typeFilter,
+    required this.onQueryChanged,
+    required this.onTypeChanged,
+  });
+
+  final TextEditingController controller;
+  final TransactionType? typeFilter;
+  final ValueChanged<String> onQueryChanged;
+  final ValueChanged<TransactionType?> onTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            autofocus: true,
+            onChanged: onQueryChanged,
+            decoration: InputDecoration(
+              hintText: 'Szukaj: sklep, opis, kategoria…',
+              prefixIcon: const AppIcon(Icons.search),
+              suffixIcon: IconButton(
+                tooltip: 'Wyczyść',
+                icon: const AppIcon(Icons.clear, size: 18),
+                onPressed: () {
+                  controller.clear();
+                  onQueryChanged('');
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Wszystkie'),
+                selected: typeFilter == null,
+                onSelected: (_) => onTypeChanged(null),
+              ),
+              ChoiceChip(
+                label: const Text('Wydatki'),
+                selected: typeFilter == TransactionType.expense,
+                onSelected: (_) => onTypeChanged(TransactionType.expense),
+              ),
+              ChoiceChip(
+                label: const Text('Dochody'),
+                selected: typeFilter == TransactionType.income,
+                onSelected: (_) => onTypeChanged(TransactionType.income),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoSearchResults extends StatelessWidget {
+  const _NoSearchResults();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 56,
+              color: theme.colorScheme.primary.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 12),
+            Text('Nic nie pasuje', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              'Zmień tekst szukania albo filtr typu.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -276,9 +449,10 @@ class _DateGroup extends StatelessWidget {
   }
 }
 
-/// Wrapper z Dismissible — swipe w lewo → confirmation dialog → delete.
-/// Działa zarówno na pending (z DAO) jak i zsynchronizowanych transakcjach
-/// (przez TransactionRepository).
+/// Wrapper z Dismissible — swipe w lewo usuwa OD RAZU, a snackbar przez
+/// kilka sekund daje „Cofnij" (re-insert; `dedup_hash` jest wolny po
+/// delete, więc przywrócenie identycznego wpisu przechodzi). Tap na wiersz
+/// otwiera edycję. Działa na pending (z DAO) i zsynchronizowanych.
 ///
 /// CRITICAL: po `onDismissed` widget MUSI natychmiast zniknąć z drzewa
 /// (parent musi przefiltrować go z listy w tym samym build). Inaczej Flutter
@@ -300,13 +474,19 @@ class _DismissibleTransactionRow extends ConsumerWidget {
   final void Function(String id) onDeleteLocally;
   final void Function(String id) onDeleteFailed;
 
+  String get _label {
+    final hasDescription = transaction.description?.trim().isNotEmpty ?? false;
+    return hasDescription
+        ? transaction.description!.trim()
+        : (category?.name ?? 'transakcja');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Dismissible(
       key: ValueKey('tx-${transaction.id}'),
       direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirm(context),
       onDismissed: (_) async {
         // KROK 1 (SYNC, natychmiast): ukrywamy item w parent — Dismissible
         // może teraz bez problemu zniknąć z drzewa.
@@ -324,7 +504,14 @@ class _DismissibleTransactionRow extends ConsumerWidget {
                 .delete(transaction.id);
           }
           messenger.showSnackBar(
-            const SnackBar(content: Text('Transakcja usunięta')),
+            SnackBar(
+              content: Text('Usunięto: $_label'),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Cofnij',
+                onPressed: () => unawaited(_undo(ref, messenger)),
+              ),
+            ),
           );
         } on Object catch (e) {
           // Rollback: usuń z _locallyDeleted żeby item wrócił.
@@ -343,49 +530,58 @@ class _DismissibleTransactionRow extends ConsumerWidget {
           color: theme.colorScheme.onErrorContainer,
         ),
       ),
-      child: _TransactionRow(
-        transaction: transaction,
-        category: category,
-        isLast: isLast,
+      child: InkWell(
+        onTap: () {
+          if (transaction.isPending) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Ten wpis czeka na synchronizację — edycja będzie '
+                  'możliwa po wysłaniu.',
+                ),
+              ),
+            );
+            return;
+          }
+          context.push('/transactions/edit', extra: transaction);
+        },
+        child: _TransactionRow(
+          transaction: transaction,
+          category: category,
+          isLast: isLast,
+        ),
       ),
     );
   }
 
-  Future<bool> _confirm(BuildContext context) async {
-    final amount = (transaction.amountCents / 100).toStringAsFixed(2);
-    final sign = transaction.type == TransactionType.income ? '+' : '−';
-    final hasDescription = transaction.description?.trim().isNotEmpty ?? false;
-    final label = hasDescription
-        ? transaction.description!.trim()
-        : (category?.name ?? 'transakcja');
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
-        return AlertDialog(
-          title: const Text('Usunąć transakcję?'),
-          content: Text(
-            '$sign$amount zł — $label\n\n'
-            'Tej operacji nie da się cofnąć.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Anuluj'),
-            ),
-            FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.errorContainer,
-                foregroundColor: theme.colorScheme.onErrorContainer,
-              ),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Usuń'),
-            ),
-          ],
+  /// „Cofnij" po usunięciu: wstawiamy wpis ponownie (nowe id; twardy
+  /// dedup przepuści, bo stary wiersz już nie istnieje).
+  Future<void> _undo(WidgetRef ref, ScaffoldMessengerState messenger) async {
+    final t = transaction;
+    final result = await ref.read(transactionRepositoryProvider).insert(
+          householdId: t.householdId,
+          occurredAt: t.occurredAt,
+          amountCents: t.amountCents,
+          type: t.type,
+          categoryId: t.categoryId,
+          source: t.source,
+          description: t.description,
+          note: t.note,
         );
-      },
-    );
-    return result ?? false;
+    switch (result) {
+      case TransactionWriteSuccess() || TransactionWriteQueued():
+        messenger.showSnackBar(
+          SnackBar(content: Text('Przywrócono: $_label')),
+        );
+      case TransactionDuplicate():
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Ten wpis już jest z powrotem.')),
+        );
+      case TransactionWriteFailure(:final message):
+        messenger.showSnackBar(
+          SnackBar(content: Text('Nie udało się przywrócić: $message')),
+        );
+    }
   }
 }
 
@@ -499,7 +695,9 @@ class _BankSuggestionsBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final suggestions = ref.watch(bankSuggestionsProvider);
+    // `visible…` = bez propozycji, które ktoś z rodziny już zaksięgował
+    // (anty-dublet między telefonami).
+    final suggestions = ref.watch(visibleBankSuggestionsProvider);
     if (suggestions.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
     return Padding(
@@ -542,7 +740,7 @@ Future<void> _showBankSuggestionsSheet(BuildContext context) {
     isScrollControlled: true,
     builder: (_) => Consumer(
       builder: (context, ref, _) {
-        final suggestions = ref.watch(bankSuggestionsProvider);
+        final suggestions = ref.watch(visibleBankSuggestionsProvider);
         final theme = Theme.of(context);
         return SafeArea(
           child: ListView(

@@ -64,6 +64,8 @@ dependencies:
   audioplayers: ^6.1.0
   file_picker: ^12.0.0
   notification_listener_service: ^1.0.0
+  share_plus: ^13.3.0
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:

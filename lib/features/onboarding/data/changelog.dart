@@ -25,6 +25,34 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23c',
+    date: '23 sierpnia 2026',
+    title: 'Wielka paczka wygody: edycja, szukajka, cykliczne, PIN…',
+    changes: [
+      'Wpis można wreszcie POPRAWIĆ: stukasz transakcję na liście '
+          'i zmieniasz kwotę, kategorię, datę czy opis — bez kasowania '
+          'i wpisywania od nowa.',
+      'Lupa na liście transakcji: szukasz po sklepie, opisie, notatce '
+          'albo kategorii; chipami zawężasz do wydatków lub dochodów.',
+      'Usuwanie bez pytania, ale z ratunkiem: wpis znika od razu, a na '
+          'dole masz kilka sekund na „Cofnij".',
+      'Transakcje cykliczne: czynsz, Netflix czy wypłata dopisują się '
+          'same w wybranym dniu miesiąca (Ustawienia → Transakcje '
+          'cykliczne).',
+      'Koniec dubli między Waszymi telefonami: gdy jedno z Was zapisze '
+          'płatność z powiadomienia, u drugiej osoby propozycja sama '
+          'zniknie — a przy próbie dodania tego samego wpisu apka '
+          'dopyta „ten wydatek chyba już jest".',
+      'Szybkie chipy kategorii na formularzu — Wasze ulubione kategorie '
+          'jeden tap od ręki.',
+      'Pulpit ostrzega przy 80% i 100% limitu kategorii oraz pokazuje, '
+          'czy wydajecie więcej niż w poprzednim okresie.',
+      'Blokada apki PIN-em (opcjonalnie odciskiem palca / twarzą) — '
+          'Ustawienia → Bezpieczeństwo.',
+      'Eksport transakcji do Excela (CSV) — Ustawienia → Twoje dane.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23b',
     date: '23 sierpnia 2026',
     title: 'Import wyciągów z banku i propozycje z powiadomień',

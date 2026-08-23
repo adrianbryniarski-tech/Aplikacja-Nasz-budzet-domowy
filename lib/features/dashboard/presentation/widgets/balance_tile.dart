@@ -66,6 +66,19 @@ class BalanceTile extends StatelessWidget {
                 ),
               ],
             ),
+            if (summary.expenseDeltaPct != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Wydatki ${summary.expenseDeltaPct! >= 0 ? '+' : ''}'
+                  '${summary.expenseDeltaPct}% vs poprzedni okres',
+                  style: tt.bodySmall?.copyWith(
+                    color: summary.expenseDeltaPct! > 0
+                        ? AppTheme.expenseAccent
+                        : AppTheme.incomeAccent,
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
             Row(
               children: [

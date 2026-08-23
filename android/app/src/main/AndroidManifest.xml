@@ -9,6 +9,9 @@
     <!-- Lokalne notyfikacje (v4) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Biometria (blokada apki odciskiem palca / twarzą) -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+
     <application
         android:label="Nasz budżet domowy"
         android:name="${applicationName}"

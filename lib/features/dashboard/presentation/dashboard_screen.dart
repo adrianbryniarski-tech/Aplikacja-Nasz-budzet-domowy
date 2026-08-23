@@ -8,6 +8,7 @@ import 'package:nasz_budzet_domowy/features/categories/application/category_prov
 import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_providers.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/manga_dashboard.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/balance_tile.dart';
+import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/budget_alerts_banner.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/category_pie_tile.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/date_range_bar.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/income_expense_bar_tile.dart';
@@ -116,6 +117,9 @@ class DashboardScreen extends ConsumerWidget {
             await Future<void>.delayed(const Duration(milliseconds: 500));
           },
         ),
+        // Ostrzeżenia o limitach (80% / 100%) — motyw Manga ma własny
+        // panel „Wykorzystanie limitów", więc baner tylko w klasycznym.
+        if (!isManga) const SliverToBoxAdapter(child: BudgetAlertsBanner()),
         summaryAsync.when(
           loading: () => const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),
