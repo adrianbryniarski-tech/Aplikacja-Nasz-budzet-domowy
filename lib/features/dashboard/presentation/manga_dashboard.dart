@@ -69,7 +69,12 @@ class MangaDashboardBody extends ConsumerWidget {
                 child: _Kpi(
                   label: 'Wydatki',
                   value: _zl(expense),
-                  trend: '$usagePct% DOCHODU',
+                  // Gdy jest odniesienie — porównanie z poprzednim równym
+                  // okresem; inaczej udział w dochodach.
+                  trend: summary.expenseDeltaPct != null
+                      ? '${summary.expenseDeltaPct! >= 0 ? '+' : ''}'
+                          '${summary.expenseDeltaPct}% VS POPRZ.'
+                      : '$usagePct% DOCHODU',
                   color: _blue,
                 ),
               ),

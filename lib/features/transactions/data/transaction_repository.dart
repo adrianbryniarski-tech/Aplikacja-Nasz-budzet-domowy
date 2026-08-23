@@ -130,11 +130,88 @@ class TransactionRepository {
     }
   }
 
+  /// Edycja istniejącej transakcji. Przelicza `dedup_hash` (kwota/data/opis
+  /// to składniki odcisku). Bez kolejki offline — edycja wymaga sieci,
+  /// w razie braku user dostaje ludzki komunikat i może spróbować później.
+  Future<TransactionWriteResult> update({
+    required String id,
+    required DateTime occurredAt,
+    required int amountCents,
+    required TransactionType type,
+    required String categoryId,
+    String? description,
+    String? note,
+  }) async {
+    final dedupHash = TransactionHasher.compute(
+      occurredAt: occurredAt,
+      amountCents: amountCents,
+      description: description,
+    );
+    try {
+      final row = await supabase
+          .from('transactions')
+          .update({
+            'occurred_at': _dateOnly(occurredAt),
+            'amount_cents': amountCents,
+            'type': type.toDbValue(),
+            'category_id': categoryId,
+            'description': description,
+            'note': note,
+            'dedup_hash': dedupHash,
+          })
+          .eq('id', id)
+          .select()
+          .single()
+          .timeout(kSupabaseWriteTimeout);
+      return TransactionWriteSuccess(Transaction.fromJson(row));
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') return const TransactionDuplicate();
+      return TransactionWriteFailure('Nie udało się zapisać: ${e.message}');
+    } on Object catch (e) {
+      return TransactionWriteFailure(humanizeError(e));
+    }
+  }
+
+  /// Transakcje gospodarstwa z tego samego DNIA o tej samej kwocie i typie.
+  ///
+  /// Miękka detekcja dubli przy zapisie z propozycji powiadomienia: o jednej
+  /// płatności mogą powiadomić dwa telefony (mąż i żona) różnym tekstem,
+  /// więc twardy `dedup_hash` (liczy opis) ich nie złapie. Best-effort —
+  /// błąd sieci zwraca pustą listę i nie blokuje zapisu.
+  Future<List<Transaction>> findSameDay({
+    required String householdId,
+    required int amountCents,
+    required TransactionType type,
+    required DateTime occurredAt,
+  }) async {
+    try {
+      final rows = await supabase
+          .from('transactions')
+          .select()
+          .eq('household_id', householdId)
+          .eq('amount_cents', amountCents)
+          .eq('type', type.toDbValue())
+          .eq('occurred_at', _dateOnly(occurredAt))
+          .limit(3)
+          .timeout(const Duration(seconds: 8));
+      return rows.map(Transaction.fromJson).toList();
+    } on Object {
+      return const [];
+    }
+  }
+
   Future<void> delete(String id) async {
     await supabase
         .from('transactions')
         .delete()
         .eq('id', id)
         .timeout(kSupabaseWriteTimeout);
+  }
+
+  /// `occurred_at` w bazie to kolumna `date` — serializacja identyczna jak
+  /// w [PendingTransaction.toSupabaseInsert] (data UTC, bez godziny).
+  static String _dateOnly(DateTime dt) {
+    final iso = DateTime.utc(dt.year, dt.month, dt.day).toIso8601String();
+    return iso.substring(0, 10);
   }
 }

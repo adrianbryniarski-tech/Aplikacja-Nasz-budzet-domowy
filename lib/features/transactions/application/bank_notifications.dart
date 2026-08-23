@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:notification_listener_service/notification_event.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
@@ -205,6 +206,36 @@ class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
     }
   }
 }
+
+/// Czy propozycja jest już zaksięgowana w budżecie gospodarstwa.
+///
+/// Anty-dublet MIĘDZY telefonami: o jednej płatności (wspólne konto,
+/// Portfel Google) powiadomienie dostają oba telefony — każdy trzyma
+/// propozycję lokalnie. Gdy jedna osoba doda wpis, u drugiej propozycja
+/// ma zniknąć. `occurred_at` w bazie to sama data, więc porównujemy
+/// dzień + kwotę + typ (dokładniejsze dopasowanie nie jest możliwe).
+bool suggestionAlreadyBooked(BankSuggestion s, List<Transaction> txs) {
+  return txs.any(
+    (t) =>
+        t.amountCents == s.amountCents &&
+        t.type == s.type &&
+        t.occurredAt.year == s.capturedAt.year &&
+        t.occurredAt.month == s.capturedAt.month &&
+        t.occurredAt.day == s.capturedAt.day,
+  );
+}
+
+/// Propozycje z powiadomień, których NIE ma jeszcze w budżecie —
+/// to je pokazuje baner i arkusz na liście transakcji.
+final visibleBankSuggestionsProvider = Provider<List<BankSuggestion>>((ref) {
+  final suggestions = ref.watch(bankSuggestionsProvider);
+  if (suggestions.isEmpty) return const [];
+  final txs = ref.watch(transactionsProvider).value ?? const <Transaction>[];
+  return [
+    for (final s in suggestions)
+      if (!suggestionAlreadyBooked(s, txs)) s,
+  ];
+});
 
 /// Włącznik nasłuchu powiadomień bankowych (beta). Domyślnie WYŁĄCZONY —
 /// wymaga świadomej zgody + systemowego dostępu do powiadomień.

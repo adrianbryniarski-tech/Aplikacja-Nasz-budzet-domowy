@@ -4,9 +4,12 @@
 
 - **Po każdej zmergowanej aktualizacji aplikacji dostarcz użytkownikowi
   APK.** Merge do maina zmian w `lib/**` sam uruchamia workflow „Build
-  debug APK"; poczekaj na jego koniec i prześlij użytkownikowi plik APK
-  z artefaktu (a gdy przesłanie pliku się nie uda — bezpośredni link do
-  artefaktu z Actions). Bez proszenia.
+  APK" (release, split-per-abi), który podpina surowy plik pod stały
+  link: https://github.com/adrianbryniarski-tech/Aplikacja-Nasz-budzet-domowy/releases/latest/download/nasz-budzet-domowy.apk
+  — poczekaj na koniec builda, ZWERYFIKUJ plik (pobierz przez proxy;
+  host release'ów objects.githubusercontent.com jest przepuszczany,
+  Azure blob artefaktów NIE) i wyślij użytkownikowi stały link z
+  rozmiarem pliku. Bez proszenia.
 
 - **Pomoc w apce musi nadążać za funkcjami.** Przy dodawaniu nowej funkcji
   lub zmianie istniejącej zawsze sprawdź i zaktualizuj ekran Pomocy:

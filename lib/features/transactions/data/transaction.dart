@@ -7,13 +7,15 @@ enum TransactionSource {
   manual,
   voice,
   csvImport,
-  pdfImport;
+  pdfImport,
+  recurring;
 
   String toDbValue() => switch (this) {
         TransactionSource.manual => 'manual',
         TransactionSource.voice => 'voice',
         TransactionSource.csvImport => 'csv_import',
         TransactionSource.pdfImport => 'pdf_import',
+        TransactionSource.recurring => 'recurring',
       };
 
   static TransactionSource fromDbValue(String raw) => switch (raw) {
@@ -21,6 +23,7 @@ enum TransactionSource {
         'voice' => TransactionSource.voice,
         'csv_import' => TransactionSource.csvImport,
         'pdf_import' => TransactionSource.pdfImport,
+        'recurring' => TransactionSource.recurring,
         _ => throw ArgumentError('Unknown tx_source: $raw'),
       };
 }

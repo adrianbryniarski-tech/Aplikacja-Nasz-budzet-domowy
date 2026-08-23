@@ -8,6 +8,7 @@ import 'package:nasz_budzet_domowy/app/router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/core/env.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
+import 'package:nasz_budzet_domowy/core/security/app_lock.dart';
 import 'package:nasz_budzet_domowy/features/budgets/application/budget_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
@@ -59,7 +60,12 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
     // wczytuje zapisany przełącznik i — jeśli włączony i jest systemowa
     // zgoda — startuje subskrypcję. Bez tego nasłuch ruszałby dopiero
     // po wejściu w Ustawienia.
-    ref.read(bankListenerEnabledProvider);
+    // Transakcje cykliczne: aktywny listener trzyma provider „na żywo",
+    // żeby naliczanie odpalało się po załadowaniu gospodarstwa i po
+    // każdym powrocie apki z tła (invalidate householdId → rebuild).
+    ref
+      ..read(bankListenerEnabledProvider)
+      ..listenManual(recurringMaterializerProvider, (_, __) {});
   }
 
   @override
@@ -110,6 +116,9 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
       darkTheme: AppTheme.dark(variant, mangaPalette: mangaPalette),
       themeMode: mode,
       routerConfig: router,
+      // Bramka blokady PIN/biometrią — nad całą nawigacją, więc żaden
+      // ekran (ani deep link) nie ominie zamka.
+      builder: (context, child) => AppLockGate(child: child),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

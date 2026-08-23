@@ -5,6 +5,8 @@ import 'package:nasz_budzet_domowy/core/offline/pending_transaction.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/import_repository.dart';
+import 'package:nasz_budzet_domowy/features/transactions/data/recurring_repository.dart';
+import 'package:nasz_budzet_domowy/features/transactions/data/recurring_transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction_repository.dart';
 
@@ -18,6 +20,37 @@ final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
 /// Import wyciągów bankowych (CSV) + reguły kategoryzacji.
 final importRepositoryProvider = Provider<ImportRepository>((ref) {
   return const ImportRepository();
+});
+
+/// Szablony transakcji cyklicznych (czynsz, abonamenty, wypłata).
+final recurringRepositoryProvider = Provider<RecurringRepository>((ref) {
+  return const RecurringRepository();
+});
+
+/// Lista szablonów cyklicznych gospodarstwa. Po każdej zmianie (dodanie,
+/// pauza, usunięcie) ekran robi `ref.invalidate(recurringListProvider)`.
+final recurringListProvider =
+    FutureProvider<List<RecurringTransaction>>((ref) async {
+  final householdId = ref.watch(currentHouseholdIdProvider).value;
+  if (householdId == null) return const [];
+  return ref.watch(recurringRepositoryProvider).list(householdId);
+});
+
+/// Naliczanie zaległych transakcji cyklicznych.
+///
+/// Obserwowane od startu apki (listenManual w main.dart): przelicza się
+/// przy pierwszym załadowaniu gospodarstwa ORAZ po każdym invalidate
+/// `currentHouseholdIdProvider` (czyli m.in. przy każdym powrocie apki
+/// z tła). Dedup_hash gwarantuje brak dubli między telefonami.
+final recurringMaterializerProvider = FutureProvider<void>((ref) async {
+  final householdId = ref.watch(currentHouseholdIdProvider).value;
+  if (householdId == null) return;
+  final inserted =
+      await ref.read(recurringRepositoryProvider).materializeDue(householdId);
+  if (inserted > 0) {
+    // Świeżo naliczone wpisy mają się od razu pojawić na liście.
+    ref.invalidate(transactionsProvider);
+  }
 });
 
 /// Lista transakcji = merge realtime Supabase + lokalna kolejka.

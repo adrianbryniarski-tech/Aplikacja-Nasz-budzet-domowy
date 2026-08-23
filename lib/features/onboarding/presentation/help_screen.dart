@@ -73,8 +73,33 @@ class HelpScreen extends StatelessWidget {
             steps: [
               'Stuknij duży przycisk + (prawy dolny róg).',
               'Wybierz Wydatek lub Dochód.',
-              'Wpisz kwotę, wybierz kategorię, datę (domyślnie dziś).',
-              'Opcjonalnie dodaj opis. Stuknij „Zapisz".',
+              'Wpisz kwotę. Nad listą kategorii są chipy z Waszymi '
+                  'najczęstszymi kategoriami — jeden tap zamiast szukania '
+                  'w liście.',
+              'Sprawdź datę (domyślnie dziś), opcjonalnie dodaj opis. '
+                  'Stuknij „Zapisz".',
+            ],
+          ),
+          _HelpSection(
+            emoji: '✏️',
+            title: 'Jak poprawić wpis (edycja)',
+            steps: [
+              'Na liście transakcji stuknij wpis, który chcesz poprawić.',
+              'Otworzy się formularz z wypełnionymi polami — zmień kwotę, '
+                  'kategorię, datę, opis albo notatkę i stuknij „Zapisz".',
+              'Wpis z ikoną zegarka (⏳) czeka na synchronizację — edycja '
+                  'będzie możliwa, gdy się wyśle.',
+            ],
+          ),
+          _HelpSection(
+            emoji: '🔍',
+            title: 'Szukanie na liście transakcji',
+            steps: [
+              'Zakładka „Transakcje" → ikona lupy u góry.',
+              'Wpisz fragment: nazwę sklepu, opis, notatkę albo nazwę '
+                  'kategorii (np. „biedronka" albo „transport").',
+              'Chipami zawęzisz do samych wydatków albo dochodów.',
+              'Zamknięcie lupy czyści szukanie i pokazuje całą listę.',
             ],
           ),
           _HelpSection(
@@ -99,6 +124,11 @@ class HelpScreen extends StatelessWidget {
               'Wydatki wg kategorii (i wykorzystanie limitów) też liczą się '
                   'dla wybranego okresu — zmień okres, a wszystko się '
                   'przeliczy.',
+              'Pod saldem widać też, czy wydajecie więcej czy mniej niż '
+                  'w poprzednim takim okresie (np. „Wydatki −12%").',
+              'Gdy jakaś kategoria zbliża się do limitu (80%) albo go '
+                  'przekroczy, na górze pulpitu pojawi się żółto-czerwone '
+                  'ostrzeżenie — znika, gdy wszystko jest w normie.',
             ],
           ),
           _HelpSection(
@@ -153,6 +183,10 @@ class HelpScreen extends StatelessWidget {
                   'i Revoluta.',
               'Propozycje zostają na Twoim telefonie (nie w chmurze) '
                   'i znikają po zapisaniu albo odrzuceniu (X).',
+              'Duble Wam nie grożą: gdy jedna osoba zapisze płatność, '
+                  'u drugiej ta propozycja sama zniknie. A gdyby mimo to '
+                  'ktoś dodawał drugi raz to samo (ta sama kwota tego '
+                  'samego dnia), apka zapyta „ten wydatek chyba już jest".',
             ],
           ),
           _HelpSection(
@@ -174,8 +208,26 @@ class HelpScreen extends StatelessWidget {
             emoji: '🗑️',
             title: 'Jak usunąć pomyłkę',
             steps: [
-              'Na liście transakcji przesuń wpis palcem w lewo.',
-              'Potwierdź w okienku „Usuń".',
+              'Na liście transakcji przesuń wpis palcem w lewo — zniknie '
+                  'od razu, bez pytania.',
+              'Na dole przez kilka sekund widać „Cofnij" — stuknij, jeśli '
+                  'to była pomyłka, a wpis wróci.',
+            ],
+          ),
+          _HelpSection(
+            emoji: '🔁',
+            title: 'Transakcje cykliczne (czynsz, abonamenty, wypłata)',
+            steps: [
+              'Ustawienia → „Transakcje cykliczne" → „Dodaj".',
+              'Podaj nazwę (np. Czynsz), kwotę, kategorię i dzień miesiąca.',
+              'Apka sama dopisze wpis do budżetu w tym dniu — także gdy '
+                  'apka była zamknięta (naliczy zaległe przy otwarciu). '
+                  'W krótszych miesiącach dzień 29–31 naliczy się ostatniego '
+                  'dnia.',
+              'Wpis cykliczny wygląda jak zwykła transakcja (opis = nazwa '
+                  'szablonu) — można go edytować i usuwać.',
+              'Szablon możesz wstrzymać (⋮ → „Wstrzymaj") albo usunąć — '
+                  'dotychczasowe wpisy zostają.',
             ],
           ),
           _HelpSection(
@@ -220,6 +272,33 @@ class HelpScreen extends StatelessWidget {
                   '+ tryb jasny/ciemny. Każdy ma inne kolory, czcionkę '
                   'i kształty.',
               'Niżej — włącz/wyłącz pojedyncze animacje i dźwięki.',
+            ],
+          ),
+          _HelpSection(
+            emoji: '🔐',
+            title: 'Blokada apki (PIN / odcisk palca)',
+            steps: [
+              'Ustawienia → sekcja „Bezpieczeństwo" → włącz „Blokada apki".',
+              'Ustaw 4–6 cyfrowy PIN (dwa razy ten sam).',
+              'Od teraz przy otwarciu apki (i po 2 minutach w tle) trzeba '
+                  'podać PIN. Każdy telefon ustawia własny.',
+              'Jeśli telefon ma czytnik odcisku albo odblokowanie twarzą, '
+                  'możesz włączyć „Odblokowanie odciskiem / twarzą" — PIN '
+                  'zostaje jako zapasowy.',
+              'Nie zgub PIN-u! Bez niego trzeba przeinstalować apkę '
+                  '(dane budżetu są w chmurze, więc nic nie przepadnie).',
+            ],
+          ),
+          _HelpSection(
+            emoji: '📤',
+            title: 'Eksport do Excela (CSV)',
+            steps: [
+              'Ustawienia → sekcja „Twoje dane" → „Eksport do CSV (Excel)".',
+              'Wybierz: ten miesiąc albo wszystkie transakcje.',
+              'Telefon pokaże okno „Udostępnij" — wyślij plik na maila, '
+                  'zapisz na Dysku Google albo prześlij na komputer.',
+              'Plik otwiera się w Excelu / Arkuszach Google — z polskimi '
+                  'znakami i kwotami z przecinkiem.',
             ],
           ),
           _HelpSection(

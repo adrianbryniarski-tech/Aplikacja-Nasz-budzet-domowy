@@ -7,6 +7,7 @@ class DashboardSummary {
     required this.totalIncomeCents,
     required this.totalExpenseCents,
     required this.prevBalanceCents,
+    required this.prevExpenseCents,
     required this.expenseByCategoryId,
     required this.barBuckets,
     required this.runningBalancePoints,
@@ -45,6 +46,7 @@ class DashboardSummary {
       totalIncomeCents: income,
       totalExpenseCents: expense,
       prevBalanceCents: prevIncome - prevExpense,
+      prevExpenseCents: prevExpense,
       expenseByCategoryId: byCategory,
       barBuckets: _buildBarBuckets(current, range),
       runningBalancePoints: _buildRunningBalance(current, range),
@@ -60,9 +62,21 @@ class DashboardSummary {
   /// Saldo poprzedniego równego okresu — do wyliczenia delty.
   final int prevBalanceCents;
 
+  /// Wydatki poprzedniego równego okresu — do porównania „−12% vs
+  /// poprzedni okres".
+  final int prevExpenseCents;
+
   int get balanceCents => totalIncomeCents - totalExpenseCents;
 
   int get deltaCents => balanceCents - prevBalanceCents;
+
+  /// Zmiana wydatków vs poprzedni równy okres w procentach (zaokrąglona).
+  /// `null` gdy w poprzednim okresie nie było wydatków (brak odniesienia).
+  int? get expenseDeltaPct {
+    if (prevExpenseCents <= 0) return null;
+    return (((totalExpenseCents - prevExpenseCents) / prevExpenseCents) * 100)
+        .round();
+  }
 
   // -------------------------------------------------------------------------
 

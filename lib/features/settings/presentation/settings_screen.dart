@@ -1,17 +1,26 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/core/error_messages.dart';
+import 'package:nasz_budzet_domowy/core/security/app_lock.dart';
 import 'package:nasz_budzet_domowy/features/animations/application/animation_settings.dart';
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
+import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
+import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
+import 'package:nasz_budzet_domowy/features/settings/application/csv_export.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/voice_input_service.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -189,6 +198,43 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const _BankListenerCard(),
+          const SizedBox(height: 32),
+          Text(
+            'Transakcje cykliczne',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ComicCard(
+            child: ListTile(
+              leading: const AppIcon(Icons.event_repeat),
+              title: const Text('Czynsz, abonamenty, wypłata…'),
+              subtitle: const Text(
+                'Stałe wpisy dopisują się same w wybranym dniu miesiąca.',
+              ),
+              trailing: const AppIcon(Icons.chevron_right),
+              onTap: () => context.push('/recurring'),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Bezpieczeństwo',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const _AppLockCard(),
+          const SizedBox(height: 32),
+          Text(
+            'Twoje dane',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const _ExportCsvCard(),
           const SizedBox(height: 32),
           Text(
             'Info',
@@ -883,5 +929,275 @@ class _BankListenerCard extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Blokada apki PIN-em + (opcjonalnie) biometrią. PIN ustawia się przy
+/// włączaniu; wyłączenie wymaga podania PIN-u.
+class _AppLockCard extends ConsumerWidget {
+  const _AppLockCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appLockSettingsProvider);
+    final theme = Theme.of(context);
+    return ComicCard(
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: settings.enabled,
+            secondary: const AppIcon(Icons.lock_outline),
+            title: const Text('Blokada apki (PIN)'),
+            subtitle: Text(
+              'Przy otwarciu apki (i po 2 minutach w tle) trzeba podać '
+              'PIN. Chroni Wasze finanse przy pożyczaniu telefonu.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            onChanged: (value) async {
+              if (value) {
+                await _enableFlow(context, ref);
+              } else {
+                await _disableFlow(context, ref);
+              }
+            },
+          ),
+          if (settings.enabled)
+            FutureBuilder<bool>(
+              future: biometricsAvailable(),
+              builder: (context, snap) {
+                if (snap.data != true) return const SizedBox.shrink();
+                return SwitchListTile(
+                  value: settings.biometricsEnabled,
+                  secondary: const AppIcon(Icons.fingerprint),
+                  title: const Text('Odblokowanie odciskiem / twarzą'),
+                  subtitle: const Text('PIN zostaje jako zapasowy.'),
+                  onChanged: (v) => ref
+                      .read(appLockSettingsProvider.notifier)
+                      .setBiometrics(enabled: v),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _enableFlow(BuildContext context, WidgetRef ref) async {
+    final pin = await _askNewPin(context);
+    if (pin == null) return;
+    await ref.read(appLockSettingsProvider.notifier).enable(pin);
+    // Świeżo włączona blokada nie ma zaskakiwać natychmiastowym zamkiem.
+    ref.read(appLockedProvider.notifier).unlock();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Blokada włączona. Nie zgub PIN-u! 🙂'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _disableFlow(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Wyłączyć blokadę?'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          decoration: const InputDecoration(
+            labelText: 'Obecny PIN',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Anuluj'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Wyłącz'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final notifier = ref.read(appLockSettingsProvider.notifier);
+    if (!notifier.verifyPin(controller.text.trim())) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Zły PIN — blokada zostaje.')),
+        );
+      }
+      return;
+    }
+    await notifier.disable();
+  }
+
+  /// Dialog ustawiania PIN-u: dwa pola (nowy + powtórz), 4–6 cyfr.
+  Future<String?> _askNewPin(BuildContext context) async {
+    final pin1 = TextEditingController();
+    final pin2 = TextEditingController();
+    String? error;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          void submit() {
+            final a = pin1.text.trim();
+            final b = pin2.text.trim();
+            if (a.length < 4 || a.length > 6 || int.tryParse(a) == null) {
+              setState(() => error = 'PIN to 4–6 cyfr.');
+              return;
+            }
+            if (a != b) {
+              setState(() => error = 'PIN-y się różnią.');
+              return;
+            }
+            Navigator.of(ctx).pop(a);
+          }
+
+          return AlertDialog(
+            title: const Text('Ustaw PIN'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: pin1,
+                  autofocus: true,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Nowy PIN (4–6 cyfr)',
+                    counterText: '',
+                  ),
+                ),
+                TextField(
+                  controller: pin2,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: InputDecoration(
+                    labelText: 'Powtórz PIN',
+                    counterText: '',
+                    errorText: error,
+                  ),
+                  onSubmitted: (_) => submit(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Anuluj'),
+              ),
+              FilledButton(onPressed: submit, child: const Text('Zapisz')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Eksport transakcji do pliku CSV (Excel) przez systemowe „Udostępnij".
+class _ExportCsvCard extends ConsumerWidget {
+  const _ExportCsvCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ComicCard(
+      child: ListTile(
+        leading: const AppIcon(Icons.table_view_outlined),
+        title: const Text('Eksport do CSV (Excel)'),
+        subtitle: const Text(
+          'Zapisz albo wyślij transakcje jako arkusz — np. do rozliczeń.',
+        ),
+        trailing: const AppIcon(Icons.chevron_right),
+        onTap: () => _pickRangeAndExport(context, ref),
+      ),
+    );
+  }
+
+  Future<void> _pickRangeAndExport(BuildContext context, WidgetRef ref) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Co wyeksportować?'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('month'),
+            child: const Text('Ten miesiąc'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop('all'),
+            child: const Text('Wszystkie transakcje'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final all = ref.read(transactionsProvider).value;
+    if (all == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Lista transakcji jeszcze się ładuje — spróbuj '
+              'za chwilę.'),
+        ),
+      );
+      return;
+    }
+    var txs = all;
+    if (choice == 'month') {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month);
+      final end = DateTime(now.year, now.month + 1);
+      txs = [
+        for (final t in all)
+          if (!t.occurredAt.isBefore(start) && t.occurredAt.isBefore(end)) t,
+      ];
+    }
+    if (txs.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Brak transakcji do eksportu.')),
+      );
+      return;
+    }
+
+    final categories = ref.read(categoriesProvider).value ?? const <Category>[];
+    final csv = buildTransactionsCsv(
+      txs,
+      {for (final c in categories) c.id: c},
+    );
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final now = DateTime.now();
+      final stamp = '${now.year}-'
+          '${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
+      final file = File('${dir.path}/nasz-budzet-$stamp.csv');
+      await file.writeAsString(csv);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/csv')],
+          subject: 'Nasz budżet domowy — eksport $stamp',
+        ),
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Eksport nie wyszedł: ${humanizeError(e)}')),
+      );
+    }
   }
 }
