@@ -110,7 +110,11 @@ jobs:
             echo "Dodaj je w Settings → Secrets and variables → Actions"
             exit 1
           fi
-          flutter build apk --debug \
+          # --split-per-abi: osobny APK per architektura zamiast jednego
+          # "grubego" (~215 MB — libvosk/Kaldi dublowane 3x). Plik do
+          # pobrania robi się ~3x mniejszy, co ratuje pobieranie na
+          # telefonie przez sieć komórkową.
+          flutter build apk --debug --split-per-abi \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=APP_VERSION=debug-${{ github.sha }}
@@ -119,7 +123,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nasz-budzet-domowy-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-*-debug.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -127,13 +131,18 @@ jobs:
       # release „apk" (artefakt Actions to zip i wymaga zalogowania).
       # Najnowsza wersja jest zawsze pod:
       # https://github.com/adrianbryniarski-tech/Aplikacja-Nasz-budzet-domowy/releases/latest/download/nasz-budzet-domowy.apk
+      #
+      # Publikujemy wariant arm64-v8a: apka wymaga Androida 11+ (minSdk 30),
+      # a te urządzenia są 64-bitowe. Pozostałe warianty (v7a, x86_64) są
+      # w artefakcie Actions, gdyby kiedyś były potrzebne.
       - name: Publish APK to rolling release „apk"
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          cp build/app/outputs/flutter-apk/app-debug.apk nasz-budzet-domowy.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk \
+            nasz-budzet-domowy.apk
           notes="Najnowsza wersja testowa (debug signing). Zaktualizowano: $(date -u '+%Y-%m-%d %H:%M UTC'), commit ${GITHUB_SHA::7}. Przed instalacją odinstaluj poprzednią wersję, jeśli instalator zgłosi konflikt podpisu."
           if gh release view apk >/dev/null 2>&1; then
             gh release edit apk --title "Najnowszy APK" --notes "$notes" --latest
