@@ -37,6 +37,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Nasłuch powiadomień bankowych (propozycje wydatków, beta).
+             Usługa działa dopiero po ręcznym nadaniu dostępu w ustawieniach
+             systemowych (Ustawienia apki → przełącznik w sekcji importu). -->
+        <service
+            android:label="Propozycje wydatków z banku"
+            android:name="notification.listener.service.NotificationListener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
     <queries>
         <intent>

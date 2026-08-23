@@ -8,6 +8,7 @@ import 'package:nasz_budzet_domowy/features/animations/application/animation_set
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/voice_input_service.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
@@ -179,6 +180,15 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           const _VoiceModelCard(),
+          const SizedBox(height: 32),
+          Text(
+            'Import z banku',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const _BankListenerCard(),
           const SizedBox(height: 32),
           Text(
             'Info',
@@ -815,6 +825,61 @@ class _AnimationTile extends ConsumerWidget {
         title: Text(animation.label),
         subtitle: Text(animation.description),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+    );
+  }
+}
+
+/// Przełącznik nasłuchu powiadomień bankowych (beta): apka czyta
+/// powiadomienia IKO / Moje ING / Revolut i podpowiada wydatki do
+/// zatwierdzenia na liście Transakcji. Wymaga systemowego dostępu do
+/// powiadomień — Android pokaże osobny ekran zgody.
+class _BankListenerCard extends ConsumerWidget {
+  const _BankListenerCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(bankListenerEnabledProvider);
+    final theme = Theme.of(context);
+    return ComicCard(
+      child: SwitchListTile(
+        value: enabled,
+        secondary: const AppIcon(Icons.notifications_active_outlined),
+        title: const Text('Propozycje z powiadomień banku (beta)'),
+        subtitle: Text(
+          'Płatność kartą w PKO BP / ING / Revolut od razu pojawi się '
+          'jako propozycja wydatku do zatwierdzenia (baner na liście '
+          'Transakcji). Wszystko zostaje na telefonie.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        onChanged: (value) async {
+          final notifier = ref.read(bankListenerEnabledProvider.notifier);
+          final controller = ref.read(bankListenerControllerProvider);
+          if (!value) {
+            await notifier.setEnabled(enabled: false);
+            return;
+          }
+          await notifier.setEnabled(enabled: true);
+          if (!await controller.isPermissionGranted()) {
+            // Android otwiera systemowy ekran „Dostęp do powiadomień" —
+            // trzeba tam zaznaczyć naszą apkę.
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Zaznacz „Nasz budżet domowy" na liście, która się '
+                    'otworzy — bez tego Android nie przekaże powiadomień.',
+                  ),
+                  duration: Duration(seconds: 5),
+                ),
+              );
+            }
+            await controller.requestPermission();
+            await controller.syncWithSettings();
+          }
+        },
       ),
     );
   }

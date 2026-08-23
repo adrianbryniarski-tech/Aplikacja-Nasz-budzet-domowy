@@ -12,6 +12,7 @@ import 'package:nasz_budzet_domowy/features/budgets/application/budget_providers
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -54,6 +55,11 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
     // żyje przez cały lifecycle apki — nie ma sensu re-startować jej
     // przy każdym rebuildzie widgeta.
     ref.read(syncWorkerProvider).start();
+    // Nasłuch powiadomień bankowych (beta): pierwsze odczytanie providera
+    // wczytuje zapisany przełącznik i — jeśli włączony i jest systemowa
+    // zgoda — startuje subskrypcję. Bez tego nasłuch ruszałby dopiero
+    // po wejściu w Ustawienia.
+    ref.read(bankListenerEnabledProvider);
   }
 
   @override

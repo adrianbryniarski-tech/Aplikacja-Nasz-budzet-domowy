@@ -1,16 +1,20 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
+import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
 /// Lista transakcji bieżącego gospodarstwa.
 /// Renderuje się jako CustomScrollView (bez własnego Scaffold) —
@@ -55,12 +59,22 @@ class _TransactionsListScreenState
 
     return CustomScrollView(
       slivers: [
-        const SliverAppBar(
-          title: Text('Transakcje'),
+        SliverAppBar(
+          title: const Text('Transakcje'),
           centerTitle: false,
           floating: true,
           snap: true,
+          actions: [
+            IconButton(
+              tooltip: 'Import z banku',
+              icon: const AppIcon(Icons.upload_file),
+              onPressed: () => context.push('/transactions/import'),
+            ),
+          ],
         ),
+        // Propozycje z powiadomień banku (beta) — baner nad listą,
+        // znika gdy kolejka pusta.
+        const SliverToBoxAdapter(child: _BankSuggestionsBanner()),
         // Pull-to-refresh — jak realtime padnie (np. zerwane wifi przy
         // wybudzeniu), user pociąga listę palcem od góry → fresh fetch.
         CupertinoSliverRefreshControl(
@@ -474,6 +488,150 @@ class _TransactionRow extends StatelessWidget {
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           ),
       ],
+    );
+  }
+}
+
+/// Baner „Propozycje z banku" (beta) — pokazuje się, gdy nasłuch
+/// powiadomień wyłuskał płatności czekające na zatwierdzenie.
+class _BankSuggestionsBanner extends ConsumerWidget {
+  const _BankSuggestionsBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = ref.watch(bankSuggestionsProvider);
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: ComicCard(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _showBankSuggestionsSheet(context),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                AppIcon(
+                  Icons.notifications_active_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    suggestions.length == 1
+                        ? '1 propozycja z powiadomienia banku'
+                        : '${suggestions.length} propozycje/-i z powiadomień '
+                            'banku',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                const AppIcon(Icons.chevron_right),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showBankSuggestionsSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => Consumer(
+      builder: (context, ref, _) {
+        final suggestions = ref.watch(bankSuggestionsProvider);
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Text(
+                  'Propozycje z banku (beta)',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              if (suggestions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('Wszystko przejrzane 🎉'),
+                ),
+              for (final s in suggestions) _BankSuggestionTile(suggestion: s),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+class _BankSuggestionTile extends ConsumerWidget {
+  const _BankSuggestionTile({required this.suggestion});
+
+  final BankSuggestion suggestion;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isIncome = suggestion.type == TransactionType.income;
+    final accent = isIncome ? AppTheme.incomeAccent : AppTheme.expenseAccent;
+    final amount =
+        NumberFormat('#,##0.00', 'pl_PL').format(suggestion.amountCents / 100);
+    return ListTile(
+      title: Text(
+        suggestion.merchant,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        '${suggestion.bank} · '
+        '${DateFormat('d.MM HH:mm').format(suggestion.capturedAt)}',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${isIncome ? '+' : '−'}$amount zł',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Odrzuć',
+            icon: const AppIcon(Icons.close, size: 18),
+            onPressed: () => ref
+                .read(bankSuggestionsProvider.notifier)
+                .remove(suggestion.id),
+          ),
+        ],
+      ),
+      onTap: () async {
+        // Formularz z wypełnioną kwotą/opisem — user tylko wybiera
+        // kategorię i zapisuje. Po udanym zapisie propozycja znika.
+        final added = await context.push<bool>(
+          '/transactions/add',
+          extra: TransactionPrefill(
+            amountCents: suggestion.amountCents,
+            description: suggestion.merchant,
+            occurredAt: suggestion.capturedAt,
+            type: suggestion.type,
+          ),
+        );
+        if (added ?? false) {
+          await ref
+              .read(bankSuggestionsProvider.notifier)
+              .remove(suggestion.id);
+        }
+      },
     );
   }
 }

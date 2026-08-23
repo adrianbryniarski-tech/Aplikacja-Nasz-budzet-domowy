@@ -62,6 +62,8 @@ dependencies:
 
   # Audio — krótkie efekty dźwiękowe (cash register dla dochodu).
   audioplayers: ^6.1.0
+  file_picker: ^12.0.0
+  notification_listener_service: ^1.0.0
 
 dev_dependencies:
   flutter_test:

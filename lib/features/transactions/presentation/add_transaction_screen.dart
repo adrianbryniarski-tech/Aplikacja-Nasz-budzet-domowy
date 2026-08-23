@@ -18,6 +18,22 @@ import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/loading_filled_button.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
+/// Wstępne wypełnienie formularza (np. z propozycji z powiadomienia
+/// banku albo przyszłych integracji). Wszystkie pola opcjonalne.
+class TransactionPrefill {
+  const TransactionPrefill({
+    this.amountCents,
+    this.description,
+    this.occurredAt,
+    this.type,
+  });
+
+  final int? amountCents;
+  final String? description;
+  final DateTime? occurredAt;
+  final TransactionType? type;
+}
+
 /// Form ręcznego dodawania transakcji.
 ///
 /// Pola: typ (segmented control), kwota, kategoria (filtrowana po typie),
@@ -26,7 +42,9 @@ import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 /// Walidacje są inline na poszczególnych polach; submit blokowany dopóki
 /// wszystkie poprawne. Po sukcesie wraca do ekranu listy.
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({super.key});
+  const AddTransactionScreen({this.prefill, super.key});
+
+  final TransactionPrefill? prefill;
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
@@ -65,6 +83,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       _type = result.type;
       _fromVoice = true;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final prefill = widget.prefill;
+    if (prefill != null) {
+      if (prefill.amountCents != null) {
+        _amountController.text =
+            (prefill.amountCents! / 100).toStringAsFixed(2);
+      }
+      if (prefill.description != null) {
+        _descriptionController.text = prefill.description!;
+      }
+      if (prefill.occurredAt != null) _occurredAt = prefill.occurredAt!;
+      if (prefill.type != null) _type = prefill.type!;
+    }
   }
 
   @override
@@ -154,7 +189,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     switch (result) {
       case TransactionWriteSuccess():
         _playSuccessAnimation();
-        context.pop();
+        context.pop(true);
       case TransactionWriteQueued():
         // Brak sieci → zapisane lokalnie. UX: zamykamy formularz tak samo
         // jak przy sukcesie, ale dorzucamy snackbar — user musi widzieć
@@ -166,7 +201,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ),
           ),
         );
-        context.pop();
+        context.pop(true);
       case TransactionDuplicate():
         setState(
           () => _errorMessage = 'Ta sama transakcja jest już zapisana w bazie.',
