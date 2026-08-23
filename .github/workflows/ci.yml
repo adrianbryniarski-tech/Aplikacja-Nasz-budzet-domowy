@@ -110,6 +110,29 @@ jobs:
               body: body.substring(0, 60000),
             });
 
+  # GitHub wyłącza scheduled workflowy po 60 dniach bez aktywności repo
+  # (`disabled_inactivity`) — 12–16.08.2026 padły tak keepalive, snapshot
+  # portfela i backup, przez co Supabase spauzował projekt. Ten job po
+  # każdym pushu do main (i ręcznym odpaleniu CI) włącza je z powrotem;
+  # na co dzień liczniki odświeża już sam keepalive.
+  revive-crons:
+    name: Reaktywuj wyłączone crony
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Enable scheduled workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in keepalive.yml portfolio-snapshot.yml backup.yml; do
+            gh api --method PUT \
+              "repos/${{ github.repository }}/actions/workflows/$wf/enable"
+            echo "włączono: $wf"
+          done
+
   db-tests:
     name: DB tests (migracje + RLS na Postgresie)
     runs-on: ubuntu-latest

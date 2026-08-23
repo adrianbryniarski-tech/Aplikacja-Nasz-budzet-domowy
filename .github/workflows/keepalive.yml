@@ -3,6 +3,12 @@ name: Supabase keep-alive
 # Supabase free tier pauzuje projekt po 7 dniach bez API requests.
 # Ten cron pinguje go codziennie aby zapobiec auto-pauzie.
 # Koszt: ~10 s/dzień × 30 ≈ 5 min/mc (z 2000 min/mc free tier).
+#
+# UWAGA: GitHub wyłącza crony po 60 dniach bez aktywności w repo
+# (stan `disabled_inactivity`) — tak umarł ten keepalive 12.08.2026,
+# przez co Supabase spauzował projekt i apka przestała się ładować.
+# Dlatego pierwszy krok każdego runa woła API "enable workflow" dla
+# wszystkich cronów — to resetuje ich 60-dniowe liczniki bez commitów.
 
 on:
   schedule:
@@ -14,7 +20,22 @@ jobs:
     name: Ping Supabase REST
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      actions: write
     steps:
+      # Reset liczników PRZED pingiem — gdy Supabase leży (5xx), ping
+      # failuje i kroki po nim by się nie wykonały, a crony muszą żyć
+      # także podczas awarii backendu.
+      - name: Odśwież 60-dniowe liczniki cronów (anty disabled_inactivity)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in keepalive.yml portfolio-snapshot.yml backup.yml; do
+            gh api --method PUT \
+              "repos/${{ github.repository }}/actions/workflows/$wf/enable"
+            echo "odświeżono: $wf"
+          done
+
       - name: Curl REST endpoint
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
