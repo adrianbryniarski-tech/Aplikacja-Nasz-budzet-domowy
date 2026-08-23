@@ -14,10 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Ta sama akcja co w db-push.yml. Poprzedni sposób
+      # (curl https://supabase.com/install.sh | sh) dostawał 404 od
+      # PIERWSZEGO runa (24.05), a pipe maskował błąd (exit code sh, nie
+      # curla) — wszystkie 13 backupów padło potem na "supabase: command
+      # not found". Wyszło 23.08 przy diagnozie awarii.
       - name: Install Supabase CLI
-        run: |
-          curl -fsSL https://supabase.com/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
       - name: Dump database
         env:
@@ -29,6 +34,7 @@ jobs:
           ls -la dumps/
 
       - name: Checkout backups repo
+        id: checkout_backups
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/nasz-budzet-domowy-backups
@@ -36,8 +42,11 @@ jobs:
           path: backups-repo
         continue-on-error: true
 
+      # `continue-on-error` nie zmienia success() — bez sprawdzenia
+      # outcome ten krok wywalałby się na brakującym working-directory,
+      # gdy repo backupów nie istnieje (artefakt niżej jest fallbackiem).
       - name: Commit dump (jeśli repo backupów istnieje)
-        if: success()
+        if: steps.checkout_backups.outcome == 'success'
         working-directory: backups-repo
         run: |
           if [ -d "../dumps" ]; then
