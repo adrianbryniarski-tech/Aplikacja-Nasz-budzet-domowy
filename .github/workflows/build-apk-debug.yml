@@ -38,8 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin identyczny z ci.yml — bez pinu „stable" potrafi dać nowszy SDK
+      # niż ten, na którym przeszło CI (23.08: CI na 3.41.9 zielone,
+      # build na 3.47.1 padł na API usuniętym w nowszym Flutterze).
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.9'
           channel: stable
           cache: true
 
