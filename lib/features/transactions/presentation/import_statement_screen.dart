@@ -12,15 +12,17 @@ import 'package:nasz_budzet_domowy/features/transactions/application/statement_c
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/bank_statement_parser.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/import_repository.dart';
+import 'package:nasz_budzet_domowy/features/transactions/data/statement_file_reader.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/inline_error.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
-/// Import wyciągu bankowego (CSV): PKO BP, ING, Revolut.
+/// Import wyciągów bankowych: CSV (PKO BP, ING, Revolut), PDF (ING)
+/// i ZIP-y z takimi plikami — można wybrać kilka naraz.
 ///
-/// Przepływ: wybór pliku → parsowanie → podgląd z auto-kategoriami
+/// Przepływ: wybór plików → parsowanie → podgląd z auto-kategoriami
 /// (wbudowane sieci + reguły nauczone od domowników) → zapis paczką
 /// z deduplikacją. Poprawki kategorii zapamiętujemy jako reguły —
 /// kolejny import przypisze je sam.
@@ -62,7 +64,7 @@ class _ImportRow {
 }
 
 class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
-  StatementParseResult? _parsed;
+  MergedStatements? _parsed;
   List<_ImportRow> _rows = const [];
   bool _busy = false;
   String? _error;
@@ -73,19 +75,24 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
       _error = null;
     });
     try {
-      final picked = await FilePicker.pickFile(
+      final picked = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv'],
+        allowedExtensions: ['csv', 'pdf', 'zip'],
       );
-      if (picked == null) {
+      if (picked.isEmpty) {
         setState(() => _busy = false); // anulowano wybór
         return;
       }
-      final bytes = await picked.readAsBytes();
-      final parsed = BankStatementParser.parse(bytes);
+      final files = <StatementFile>[
+        for (final p in picked)
+          StatementFile(name: p.name, bytes: await p.readAsBytes()),
+      ];
+      final parsed = StatementFileReader.readPicked(files);
       if (parsed.entries.isEmpty) {
-        throw const StatementParseException(
-          'W pliku nie ma żadnych transakcji do zaimportowania.',
+        throw StatementParseException(
+          parsed.fileErrors.isNotEmpty
+              ? parsed.fileErrors.join('\n')
+              : 'W plikach nie ma żadnych transakcji do zaimportowania.',
         );
       }
 
@@ -277,10 +284,11 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                 Text('Jak to działa', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
-                  '1. Pobierz wyciąg CSV w aplikacji lub na stronie banku '
-                  '(obsługujemy PKO BP, ING i Revolut).\n'
-                  '2. Wybierz plik poniżej — apka sama rozpozna bank, '
-                  'rozdzieli transakcje i zaproponuje kategorie.\n'
+                  '1. Pobierz z banku wyciąg CSV (PKO BP, ING, Revolut) '
+                  'albo PDF (ING). Może być też ZIP z wieloma plikami.\n'
+                  '2. Wybierz pliki poniżej — możesz kilka naraz. Apka '
+                  'sama rozpozna bank, rozdzieli transakcje i zaproponuje '
+                  'kategorie.\n'
                   '3. Przejrzyj, popraw co trzeba i zapisz. Nic się nie '
                   'zdubluje, a poprawki kategorii apka zapamięta na '
                   'kolejne importy.',
@@ -296,19 +304,22 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
         FilledButton.icon(
           onPressed: _pickAndParse,
           icon: const AppIcon(Icons.upload_file),
-          label: const Text('Wybierz plik CSV'),
+          label: const Text('Wybierz pliki (CSV / PDF / ZIP)'),
         ),
       ],
     );
   }
 
-  Widget _buildPreview(ThemeData theme, StatementParseResult parsed) {
+  Widget _buildPreview(ThemeData theme, MergedStatements parsed) {
     final selectedCount = _rows.where((r) => r.selected).length;
     final toReview = _rows.where((r) => !r.autoMatched).length;
     final suspected = _rows.where((r) => r.suspectedDuplicate).length;
     final suspectedInfo = '$suspected chyba już jest w budżecie '
         '(odznaczone — zaznacz, jeśli to co innego)';
     final skipped = parsed.skippedNonPln + parsed.skippedOther;
+    final repeats = parsed.crossFileDuplicates + parsed.duplicateFiles;
+    final internalInfo = '${parsed.skippedInternal} przelewów między '
+        'własnymi kontami pominięto';
     final categoriesById = {
       for (final c in ref.watch(categoriesProvider).value ?? const <Category>[])
         c.id: c,
@@ -325,7 +336,11 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Wykryto: ${parsed.bank} — ${_rows.length} transakcji',
+                    parsed.parsedFiles > 1
+                        ? 'Wykryto: ${parsed.banksLabel} — ${_rows.length} '
+                            'transakcji z ${parsed.parsedFiles} plików'
+                        : 'Wykryto: ${parsed.banksLabel} — ${_rows.length} '
+                            'transakcji',
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
@@ -334,6 +349,9 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                       if (suspected > 0) suspectedInfo,
                       if (toReview > 0)
                         '$toReview do przejrzenia (oznaczone kolorem)',
+                      if (parsed.skippedInternal > 0) internalInfo,
+                      if (repeats > 0)
+                        '$repeats powtórek z innych plików pominięto',
                       if (skipped > 0) 'pominięto $skipped (waluta/w toku)',
                       'duplikaty odfiltrują się przy zapisie',
                     ].join(' · '),
@@ -341,6 +359,10 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  if (parsed.fileErrors.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    InlineError(message: parsed.fileErrors.join('\n')),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 8),
                     InlineError(message: _error!),
@@ -380,7 +402,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                       _rows = const [];
                       _error = null;
                     }),
-                    child: const Text('Inny plik'),
+                    child: const Text('Inne pliki'),
                   ),
                 ),
                 const SizedBox(width: 12),

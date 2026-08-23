@@ -6,6 +6,8 @@ import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_providers.dart';
+import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_v2_providers.dart';
+import 'package:nasz_budzet_domowy/features/dashboard/presentation/dashboard_v2.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/manga_dashboard.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/balance_tile.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/widgets/budget_alerts_banner.dart';
@@ -38,6 +40,7 @@ class DashboardScreen extends ConsumerWidget {
     final hasInvestments =
         (ref.watch(investmentsProvider).value ?? const []).isNotEmpty;
     final isManga = ref.watch(themeVariantProvider) == AppThemeVariant.manga;
+    final isV2 = ref.watch(dashboardV2EnabledProvider);
 
     return CustomScrollView(
       slivers: [
@@ -119,8 +122,10 @@ class DashboardScreen extends ConsumerWidget {
           },
         ),
         // Ostrzeżenia o limitach (80% / 100%) — motyw Manga ma własny
-        // panel „Wykorzystanie limitów", więc baner tylko w klasycznym.
-        if (!isManga) const SliverToBoxAdapter(child: BudgetAlertsBanner()),
+        // panel „Wykorzystanie limitów", a nowy pulpit własną kartę
+        // budżetów, więc baner tylko w klasycznym.
+        if (!isManga && !isV2)
+          const SliverToBoxAdapter(child: BudgetAlertsBanner()),
         summaryAsync.when(
           // Szkielet układu zamiast kółka — pulpit od razu wygląda jak
           // pulpit, tylko „wyszarzony" do czasu danych.
@@ -139,6 +144,16 @@ class DashboardScreen extends ConsumerWidget {
           ),
           data: (summary) {
             final categories = categoriesAsync.value ?? const [];
+            // Nowy pulpit (Ustawienia → Pulpit) wygrywa z każdym motywem —
+            // to świadomy wybór użytkownika, kolory i tak są z motywu.
+            if (isV2) {
+              return SliverToBoxAdapter(
+                child: DashboardV2Body(
+                  summary: summary,
+                  categories: categories,
+                ),
+              );
+            }
             if (isManga) {
               return SliverToBoxAdapter(
                 child: MangaDashboardBody(summary: summary),

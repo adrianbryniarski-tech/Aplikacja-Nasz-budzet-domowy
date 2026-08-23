@@ -132,6 +132,30 @@ class HelpScreen extends StatelessWidget {
             ],
           ),
           _HelpSection(
+            emoji: '✨',
+            title: 'Nowy pulpit (beta) — do włączenia w Ustawieniach',
+            steps: [
+              'Ustawienia → sekcja „Pulpit" → włącz „Nowy pulpit (beta)". '
+                  'Można wrócić do klasycznego w każdej chwili — nic nie '
+                  'przepada.',
+              'Największa karta u góry pokazuje, ILE ZOSTAŁO do wydania '
+                  'w wybranym okresie, a pod spodem podpowiedź „≈ tyle '
+                  'dziennie do końca okresu" — łatwiej trzymać się planu '
+                  'dzień po dniu.',
+              'Niżej: kafle Dochody/Wydatki (z porównaniem do poprzedniego '
+                  'okresu), szybkie przyciski „Wydatek"/„Dochód"/import, '
+                  'budżety z kółkiem % wykorzystania, wykres salda w czasie '
+                  'i „Na co idzie najwięcej".',
+              '„Nadchodzące płatności" pokazuje najbliższe transakcje '
+                  'cykliczne (czynsz, abonamenty) — stuknij, by przejść do '
+                  'pełnej listy.',
+              '„Ostatnie transakcje" to podgląd świeżych wpisów — stuknięcie '
+                  'otwiera edycję.',
+              'Nowy pulpit działa w każdym motywie i trybie ciemnym — '
+                  'kolory bierze z wybranego stylu.',
+            ],
+          ),
+          _HelpSection(
             emoji: '🎤',
             title: 'Jak dodać głosem',
             steps: [
@@ -152,15 +176,21 @@ class HelpScreen extends StatelessWidget {
           ),
           _HelpSection(
             emoji: '🏦',
-            title: 'Import wyciągu z banku (CSV)',
+            title: 'Import wyciągów z banku (CSV, PDF, ZIP)',
             steps: [
-              'Pobierz wyciąg CSV w aplikacji lub na stronie banku — '
-                  'obsługujemy PKO BP (iPKO), ING (Moje ING) i Revolut.',
+              'Pobierz z banku wyciąg CSV (PKO BP — iPKO, ING — Moje ING, '
+                  'Revolut) albo PDF (ING). Możesz też wziąć ZIP z wieloma '
+                  'wyciągami — np. tak, jak ING wysyła je mailem.',
               'Zakładka „Transakcje" → ikona importu (strzałka z kartką) '
-                  'w pasku u góry → „Wybierz plik CSV".',
+                  'w pasku u góry → „Wybierz pliki (CSV / PDF / ZIP)" — '
+                  'możesz zaznaczyć kilka plików naraz.',
               'Apka sama rozpozna bank, rozdzieli transakcje i zaproponuje '
                   'kategorie — znane sklepy (np. Biedronka, Orlen, apteki) '
                   'rozpozna od ręki.',
+              'Z PDF-ów ING apka pomija przelewy między Waszymi własnymi '
+                  'kontami („Przelew własny") — to przenosiny pieniędzy, '
+                  'nie wydatki. Ten sam wyciąg wrzucony dwa razy (np. '
+                  'luzem i w ZIP-ie) też się nie zdubluje.',
               'Wiersze ze znakiem zapytania przejrzyj i ustaw kategorię — '
                   'apka zapamięta Twój wybór i następnym razem przypisze '
                   'ją sama.',

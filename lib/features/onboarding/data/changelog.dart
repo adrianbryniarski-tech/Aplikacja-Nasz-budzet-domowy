@@ -25,6 +25,40 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23f',
+    date: '23 sierpnia 2026',
+    title: 'Nowy pulpit do włączenia — zaprojektowany wg trendów 2026',
+    changes: [
+      'W Ustawieniach (sekcja „Pulpit") możesz włączyć „Nowy pulpit '
+          '(beta)" — świeży wygląd głównego ekranu. Klasyczny zostaje, '
+          'wracasz do niego jednym przełącznikiem.',
+      'Największa karta mówi wprost, ile zostało do wydania, i podpowiada '
+          '„≈ tyle dziennie do końca okresu" — bez liczenia w głowie.',
+      'Do tego: szybkie przyciski Wydatek/Dochód/import, budżety z kółkiem '
+          'procentów, wykres salda, „Na co idzie najwięcej", nadchodzące '
+          'płatności cykliczne i ostatnie transakcje — wszystko na jednym '
+          'ekranie, w kolorach Twojego motywu.',
+    ],
+  ),
+  ChangelogEntry(
+    version: '2026-08-23e',
+    date: '23 sierpnia 2026',
+    title: 'Wyciągi z ING wrzucasz teraz jako PDF — bez kombinowania',
+    changes: [
+      'Import z banku przyjmuje teraz także PDF-y z ING i ZIP-y '
+          'z wyciągami w środku — dokładnie takie pliki, jakie '
+          'pobierasz z Moje ING, bez żadnego przerabiania.',
+      'Można wybrać kilka plików naraz — apka złoży je w jedną listę '
+          'i posortuje po dacie.',
+      'Przelewy między Waszymi własnymi kontami („Przelew własny") '
+          'apka pomija sama — nie zawyżą wydatków ani dochodów.',
+      'Ten sam wyciąg wrzucony dwa razy (np. luzem i w ZIP-ie) nie '
+          'zdubluje transakcji, a apka policzy się z nagłówkiem '
+          'wyciągu — jak coś się nie zgadza, powie wprost zamiast '
+          'importować połowę.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23d',
     date: '23 sierpnia 2026',
     title: 'Apka po liftingu — płynniej i nowocześniej',
