@@ -132,6 +132,30 @@ class HelpScreen extends StatelessWidget {
             ],
           ),
           _HelpSection(
+            emoji: '✨',
+            title: 'Nowy pulpit (beta) — do włączenia w Ustawieniach',
+            steps: [
+              'Ustawienia → sekcja „Pulpit" → włącz „Nowy pulpit (beta)". '
+                  'Można wrócić do klasycznego w każdej chwili — nic nie '
+                  'przepada.',
+              'Największa karta u góry pokazuje, ILE ZOSTAŁO do wydania '
+                  'w wybranym okresie, a pod spodem podpowiedź „≈ tyle '
+                  'dziennie do końca okresu" — łatwiej trzymać się planu '
+                  'dzień po dniu.',
+              'Niżej: kafle Dochody/Wydatki (z porównaniem do poprzedniego '
+                  'okresu), szybkie przyciski „Wydatek"/„Dochód"/import, '
+                  'budżety z kółkiem % wykorzystania, wykres salda w czasie '
+                  'i „Na co idzie najwięcej".',
+              '„Nadchodzące płatności" pokazuje najbliższe transakcje '
+                  'cykliczne (czynsz, abonamenty) — stuknij, by przejść do '
+                  'pełnej listy.',
+              '„Ostatnie transakcje" to podgląd świeżych wpisów — stuknięcie '
+                  'otwiera edycję.',
+              'Nowy pulpit działa w każdym motywie i trybie ciemnym — '
+                  'kolory bierze z wybranego stylu.',
+            ],
+          ),
+          _HelpSection(
             emoji: '🎤',
             title: 'Jak dodać głosem',
             steps: [

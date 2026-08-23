@@ -12,6 +12,7 @@ import 'package:nasz_budzet_domowy/features/animations/application/animation_set
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
 import 'package:nasz_budzet_domowy/features/categories/data/category.dart';
+import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_v2_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/csv_export.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
@@ -136,6 +137,15 @@ class SettingsScreen extends ConsumerWidget {
             onSelectionChanged: (s) =>
                 ref.read(themeModeProvider.notifier).set(s.first),
           ),
+          const SizedBox(height: 32),
+          Text(
+            'Pulpit',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const _DashboardV2Tile(),
           const SizedBox(height: 32),
           Text(
             'Gospodarstwo',
@@ -850,6 +860,34 @@ class _VoiceModelCardState extends State<_VoiceModelCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Przełącznik nowego pulpitu (bento 2026): karta „Zostało do wydania"
+/// z podpowiedzią dzienną, budżety z ringiem, trend, top kategorie,
+/// nadchodzące płatności i ostatnie transakcje w jednym widoku.
+class _DashboardV2Tile extends ConsumerWidget {
+  const _DashboardV2Tile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(dashboardV2EnabledProvider);
+    return ComicCard(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: SwitchListTile(
+        value: enabled,
+        onChanged: (v) => ref
+            .read(dashboardV2EnabledProvider.notifier)
+            .setEnabled(enabled: v),
+        title: const Text('Nowy pulpit (beta)'),
+        subtitle: const Text(
+          'Świeży układ: ile zostało do wydania (z podpowiedzią „ile '
+          'dziennie"), budżety, trend, top kategorie, nadchodzące '
+          'płatności i ostatnie transakcje. Można wrócić w każdej chwili.',
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
   }

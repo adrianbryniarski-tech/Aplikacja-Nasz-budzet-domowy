@@ -25,6 +25,22 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23f',
+    date: '23 sierpnia 2026',
+    title: 'Nowy pulpit do włączenia — zaprojektowany wg trendów 2026',
+    changes: [
+      'W Ustawieniach (sekcja „Pulpit") możesz włączyć „Nowy pulpit '
+          '(beta)" — świeży wygląd głównego ekranu. Klasyczny zostaje, '
+          'wracasz do niego jednym przełącznikiem.',
+      'Największa karta mówi wprost, ile zostało do wydania, i podpowiada '
+          '„≈ tyle dziennie do końca okresu" — bez liczenia w głowie.',
+      'Do tego: szybkie przyciski Wydatek/Dochód/import, budżety z kółkiem '
+          'procentów, wykres salda, „Na co idzie najwięcej", nadchodzące '
+          'płatności cykliczne i ostatnie transakcje — wszystko na jednym '
+          'ekranie, w kolorach Twojego motywu.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23e',
     date: '23 sierpnia 2026',
     title: 'Wyciągi z ING wrzucasz teraz jako PDF — bez kombinowania',
