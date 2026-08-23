@@ -116,7 +116,7 @@ class ImportRepository {
         'category_id': row.categoryId,
         'description': baseDescription,
         'note': null,
-        'source': TransactionSource.csvImport.toDbValue(),
+        'source': e.source.toDbValue(),
         'dedup_hash': occurrence == 1
             ? baseHash
             : TransactionHasher.compute(

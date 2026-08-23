@@ -152,15 +152,21 @@ class HelpScreen extends StatelessWidget {
           ),
           _HelpSection(
             emoji: '🏦',
-            title: 'Import wyciągu z banku (CSV)',
+            title: 'Import wyciągów z banku (CSV, PDF, ZIP)',
             steps: [
-              'Pobierz wyciąg CSV w aplikacji lub na stronie banku — '
-                  'obsługujemy PKO BP (iPKO), ING (Moje ING) i Revolut.',
+              'Pobierz z banku wyciąg CSV (PKO BP — iPKO, ING — Moje ING, '
+                  'Revolut) albo PDF (ING). Możesz też wziąć ZIP z wieloma '
+                  'wyciągami — np. tak, jak ING wysyła je mailem.',
               'Zakładka „Transakcje" → ikona importu (strzałka z kartką) '
-                  'w pasku u góry → „Wybierz plik CSV".',
+                  'w pasku u góry → „Wybierz pliki (CSV / PDF / ZIP)" — '
+                  'możesz zaznaczyć kilka plików naraz.',
               'Apka sama rozpozna bank, rozdzieli transakcje i zaproponuje '
                   'kategorie — znane sklepy (np. Biedronka, Orlen, apteki) '
                   'rozpozna od ręki.',
+              'Z PDF-ów ING apka pomija przelewy między Waszymi własnymi '
+                  'kontami („Przelew własny") — to przenosiny pieniędzy, '
+                  'nie wydatki. Ten sam wyciąg wrzucony dwa razy (np. '
+                  'luzem i w ZIP-ie) też się nie zdubluje.',
               'Wiersze ze znakiem zapytania przejrzyj i ustaw kategorię — '
                   'apka zapamięta Twój wybór i następnym razem przypisze '
                   'ją sama.',

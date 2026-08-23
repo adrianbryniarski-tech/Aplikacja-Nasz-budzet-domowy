@@ -9,6 +9,7 @@ class StatementEntry {
     required this.amountCents,
     required this.type,
     required this.description,
+    this.source = TransactionSource.csvImport,
   });
 
   final DateTime occurredAt;
@@ -17,6 +18,9 @@ class StatementEntry {
   final int amountCents;
   final TransactionType type;
   final String description;
+
+  /// Skąd wpis pochodzi — CSV vs PDF (widoczne potem w eksporcie CSV).
+  final TransactionSource source;
 }
 
 /// Wynik parsowania całego pliku wyciągu.
@@ -26,6 +30,7 @@ class StatementParseResult {
     required this.entries,
     this.skippedNonPln = 0,
     this.skippedOther = 0,
+    this.skippedInternal = 0,
   });
 
   /// Wykryty bank — do pokazania w podglądzie („Wykryto: ING").
@@ -38,6 +43,10 @@ class StatementParseResult {
   /// Wiersze pominięte z innych powodów (blokady, transakcje w toku,
   /// zerowe kwoty, nieparsowalne daty).
   final int skippedOther;
+
+  /// Przelewy między własnymi kontami („Przelew własny" w PDF z ING) —
+  /// pominięte, bo zawyżyłyby i dochody, i wydatki.
+  final int skippedInternal;
 }
 
 /// Błąd parsowania z komunikatem po polsku — leci prosto do UI.

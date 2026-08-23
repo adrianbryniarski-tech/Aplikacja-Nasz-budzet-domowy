@@ -25,6 +25,24 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23e',
+    date: '23 sierpnia 2026',
+    title: 'Wyciągi z ING wrzucasz teraz jako PDF — bez kombinowania',
+    changes: [
+      'Import z banku przyjmuje teraz także PDF-y z ING i ZIP-y '
+          'z wyciągami w środku — dokładnie takie pliki, jakie '
+          'pobierasz z Moje ING, bez żadnego przerabiania.',
+      'Można wybrać kilka plików naraz — apka złoży je w jedną listę '
+          'i posortuje po dacie.',
+      'Przelewy między Waszymi własnymi kontami („Przelew własny") '
+          'apka pomija sama — nie zawyżą wydatków ani dochodów.',
+      'Ten sam wyciąg wrzucony dwa razy (np. luzem i w ZIP-ie) nie '
+          'zdubluje transakcji, a apka policzy się z nagłówkiem '
+          'wyciągu — jak coś się nie zgadza, powie wprost zamiast '
+          'importować połowę.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23d',
     date: '23 sierpnia 2026',
     title: 'Apka po liftingu — płynniej i nowocześniej',
