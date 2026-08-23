@@ -2,6 +2,12 @@
 
 ## Zasady pracy
 
+- **Po każdej zmergowanej aktualizacji aplikacji dostarcz użytkownikowi
+  APK.** Merge do maina zmian w `lib/**` sam uruchamia workflow „Build
+  debug APK"; poczekaj na jego koniec i prześlij użytkownikowi plik APK
+  z artefaktu (a gdy przesłanie pliku się nie uda — bezpośredni link do
+  artefaktu z Actions). Bez proszenia.
+
 - **Pomoc w apce musi nadążać za funkcjami.** Przy dodawaniu nowej funkcji
   lub zmianie istniejącej zawsze sprawdź i zaktualizuj ekran Pomocy:
   `lib/features/onboarding/presentation/help_screen.dart`

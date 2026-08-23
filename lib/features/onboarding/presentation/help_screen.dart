@@ -121,6 +121,41 @@ class HelpScreen extends StatelessWidget {
             ],
           ),
           _HelpSection(
+            emoji: '🏦',
+            title: 'Import wyciągu z banku (CSV)',
+            steps: [
+              'Pobierz wyciąg CSV w aplikacji lub na stronie banku — '
+                  'obsługujemy PKO BP (iPKO), ING (Moje ING) i Revolut.',
+              'Zakładka „Transakcje" → ikona importu (strzałka z kartką) '
+                  'w pasku u góry → „Wybierz plik CSV".',
+              'Apka sama rozpozna bank, rozdzieli transakcje i zaproponuje '
+                  'kategorie — znane sklepy (np. Biedronka, Orlen, apteki) '
+                  'rozpozna od ręki.',
+              'Wiersze ze znakiem zapytania przejrzyj i ustaw kategorię — '
+                  'apka zapamięta Twój wybór i następnym razem przypisze '
+                  'ją sama.',
+              'Stuknij „Zapisz". Nic się nie zdubluje — to, co już było '
+                  'w budżecie, zostanie pominięte przy zapisie.',
+            ],
+          ),
+          _HelpSection(
+            emoji: '🔔',
+            title: 'Propozycje z powiadomień banku (beta)',
+            steps: [
+              'Ustawienia → sekcja „Import z banku" → włącz „Propozycje '
+                  'z powiadomień banku".',
+              'Android poprosi o dostęp do powiadomień — zaznacz „Nasz '
+                  'budżet domowy" na liście, która się otworzy.',
+              'Gdy zapłacisz kartą — także zbliżeniowo przez Portfel '
+                  'Google — na liście Transakcji pojawi się baner '
+                  'z propozycją — stuknij ją, sprawdź kategorię i zapisz. '
+                  'Czytamy powiadomienia Portfela Google, IKO, Moje ING '
+                  'i Revoluta.',
+              'Propozycje zostają na Twoim telefonie (nie w chmurze) '
+                  'i znikają po zapisaniu albo odrzuceniu (X).',
+            ],
+          ),
+          _HelpSection(
             emoji: '🏷️',
             title: 'Kategorie i podkategorie',
             steps: [

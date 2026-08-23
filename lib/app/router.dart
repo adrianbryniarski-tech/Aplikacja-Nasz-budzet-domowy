@@ -19,6 +19,7 @@ import 'package:nasz_budzet_domowy/features/onboarding/presentation/help_screen.
 import 'package:nasz_budzet_domowy/features/onboarding/presentation/whats_new_screen.dart';
 import 'package:nasz_budzet_domowy/features/settings/presentation/settings_screen.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
+import 'package:nasz_budzet_domowy/features/transactions/presentation/import_statement_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Globalny router z redirectami zależnymi od stanu auth i gospodarstwa.
@@ -132,7 +133,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/transactions/add',
-        builder: (context, state) => const AddTransactionScreen(),
+        builder: (context, state) => AddTransactionScreen(
+          prefill: state.extra as TransactionPrefill?,
+        ),
+      ),
+      GoRoute(
+        path: '/transactions/import',
+        builder: (context, state) => const ImportStatementScreen(),
       ),
       GoRoute(
         path: '/investments/add',

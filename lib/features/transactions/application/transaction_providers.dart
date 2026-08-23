@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nasz_budzet_domowy/core/offline/pending_transaction.dart';
 import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
+import 'package:nasz_budzet_domowy/features/transactions/data/import_repository.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction_repository.dart';
 
@@ -12,6 +13,11 @@ final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
     ref.watch(pendingOpsDaoProvider),
     ref.watch(syncWorkerProvider),
   );
+});
+
+/// Import wyciągów bankowych (CSV) + reguły kategoryzacji.
+final importRepositoryProvider = Provider<ImportRepository>((ref) {
+  return const ImportRepository();
 });
 
 /// Lista transakcji = merge realtime Supabase + lokalna kolejka.

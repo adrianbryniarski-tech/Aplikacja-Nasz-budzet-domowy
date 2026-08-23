@@ -25,6 +25,28 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23b',
+    date: '23 sierpnia 2026',
+    title: 'Import wyciągów z banku i propozycje z powiadomień',
+    changes: [
+      'Koniec ręcznego klepania wydatków: pobierz wyciąg CSV z banku '
+          '(PKO BP, ING albo Revolut), wskaż plik w zakładce Transakcje '
+          '(ikona importu u góry), a apka sama rozdzieli transakcje '
+          'i zaproponuje kategorie — znane sklepy, stacje i apteki '
+          'rozpozna od ręki.',
+      'Apka uczy się Waszych poprawek: raz ustawisz kategorię dla '
+          'sklepu, a każdy kolejny import przypisze ją automatycznie.',
+      'Bez obaw o duplikaty — wpisy, które już są w budżecie (np. '
+          'dodane ręcznie albo z poprzedniego wyciągu), przy imporcie '
+          'zostaną pominięte.',
+      'Nowość w becie: propozycje z powiadomień. Po włączeniu '
+          'w Ustawieniach (sekcja „Import z banku") płatność kartą — '
+          'także zbliżeniowo przez Portfel Google — od razu pojawia się '
+          'jako propozycja na liście Transakcji: stukasz, sprawdzasz '
+          'kategorię i zapisujesz.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23',
     date: '23 sierpnia 2026',
     title: 'Apka nie zawiesza się, gdy nie ma internetu lub serwera',
