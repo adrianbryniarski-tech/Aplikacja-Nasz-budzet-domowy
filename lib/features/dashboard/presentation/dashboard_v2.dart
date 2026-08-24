@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,8 +17,10 @@ import 'package:nasz_budzet_domowy/features/transactions/application/transaction
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/animated_amount.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/animated_neon_border.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
+import 'package:nasz_budzet_domowy/shared/widgets/glowing_button.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
 /// Nowy pulpit („Pulpit 2.0") — układ bento wg trendów 2025/26.
@@ -47,53 +51,73 @@ class DashboardV2Body extends ConsumerWidget {
     final budgets = ref.watch(periodBudgetProgressProvider);
     final range = ref.watch(dateRangeFilterProvider);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _HeroCard(summary: summary, range: range),
-          const SizedBox(height: 12),
-          Row(
+    // Kolejne karty wjeżdżają z lekkim poślizgiem (raz, przy wejściu).
+    var order = 0;
+    Widget entrance(Widget child) => _Entrance(index: order++, child: child);
+
+    return Stack(
+      children: [
+        // Ambientowe, dryfujące plamy światła za kartami — tylko motywy
+        // neonowe (na czele z „Neo"). Na pozostałych: nic (zero kosztu).
+        const Positioned.fill(child: _AuroraBackdrop()),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: _MiniStatCard(
-                  label: 'Dochody',
-                  cents: summary.totalIncomeCents,
-                  accent: AppTheme.incomeAccent,
-                  icon: Icons.trending_up_rounded,
+              entrance(_HeroCard(summary: summary, range: range)),
+              const SizedBox(height: 12),
+              entrance(
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MiniStatCard(
+                        label: 'Dochody',
+                        cents: summary.totalIncomeCents,
+                        accent: AppTheme.incomeAccent,
+                        icon: Icons.trending_up_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _MiniStatCard(
+                        label: 'Wydatki',
+                        cents: summary.totalExpenseCents,
+                        accent: AppTheme.expenseAccent,
+                        icon: Icons.trending_down_rounded,
+                        deltaPct: summary.expenseDeltaPct,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MiniStatCard(
-                  label: 'Wydatki',
-                  cents: summary.totalExpenseCents,
-                  accent: AppTheme.expenseAccent,
-                  icon: Icons.trending_down_rounded,
-                  deltaPct: summary.expenseDeltaPct,
+              const SizedBox(height: 12),
+              entrance(const _QuickActionsRow()),
+              if (budgets.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                entrance(
+                  _BudgetsCard(budgets: budgets, categories: categories),
                 ),
-              ),
+              ],
+              if (summary.runningBalancePoints.length >= 2) ...[
+                const SizedBox(height: 12),
+                entrance(_TrendCard(summary: summary)),
+              ],
+              if (summary.expenseByCategoryId.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                entrance(
+                  _TopCategoriesCard(
+                    summary: summary,
+                    categories: categories,
+                  ),
+                ),
+              ],
+              entrance(const _UpcomingCard()),
+              entrance(_RecentCard(categories: categories)),
             ],
           ),
-          const SizedBox(height: 12),
-          const _QuickActionsRow(),
-          if (budgets.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _BudgetsCard(budgets: budgets, categories: categories),
-          ],
-          if (summary.runningBalancePoints.length >= 2) ...[
-            const SizedBox(height: 12),
-            _TrendCard(summary: summary),
-          ],
-          if (summary.expenseByCategoryId.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _TopCategoriesCard(summary: summary, categories: categories),
-          ],
-          const _UpcomingCard(),
-          _RecentCard(categories: categories),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -164,27 +188,43 @@ List<({String categoryId, int cents, double share})> topExpenseCategories(
 
 /// Wspólna baza kart V2: duże zaokrąglenie, powierzchnia z tokenów,
 /// w motywach komiksowych gruby kontur + komiksowy cień.
+///
+/// Na motywach neonowych (Neo, Cyber, Synthwave, Galaktyka) karta robi
+/// się „szklana": półprzezroczysta nad aurorą, ze statyczną gradientową
+/// ramką primary→accent; [glow] dodaje miękką poświatę wokół karty,
+/// [animatedBorder] wyłącza statyczną ramkę (bo kartę okala wtedy
+/// [AnimatedNeonBorder]).
 class _V2Card extends ConsumerWidget {
   const _V2Card({
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.gradient,
     this.onTap,
+    this.glow = false,
+    this.animatedBorder = false,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Gradient? gradient;
   final VoidCallback? onTap;
+  final bool glow;
+  final bool animatedBorder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final variant = ref.watch(themeVariantProvider);
     final ink = comicInk(variant, Theme.of(context).scaffoldBackgroundColor);
+    final neon = variant.hasNeonEffects;
 
-    final card = Material(
-      color: gradient == null ? cs.surfaceContainerHigh : Colors.transparent,
+    // Szkło nad aurorą: karta przepuszcza odrobinę tła.
+    final fill = neon
+        ? cs.surfaceContainerHigh.withValues(alpha: 0.62)
+        : cs.surfaceContainerHigh;
+
+    Widget card = Material(
+      color: gradient == null ? fill : Colors.transparent,
       borderRadius: BorderRadius.circular(24),
       child: Ink(
         decoration: BoxDecoration(
@@ -200,23 +240,90 @@ class _V2Card extends ConsumerWidget {
       ),
     );
 
+    if (neon && !animatedBorder) {
+      card = CustomPaint(
+        foregroundPainter: _GradientBorderPainter(
+          colors: [
+            cs.primary.withValues(alpha: 0.55),
+            variant.gradientAccent.withValues(alpha: 0.55),
+          ],
+        ),
+        child: card,
+      );
+    }
+    if (neon && glow) {
+      card = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.30),
+              blurRadius: 28,
+              spreadRadius: -2,
+            ),
+            BoxShadow(
+              color: variant.gradientAccent.withValues(alpha: 0.16),
+              blurRadius: 44,
+              spreadRadius: -6,
+            ),
+          ],
+        ),
+        child: card,
+      );
+    }
+
     return RepaintBoundary(
       child: ComicShadow(borderRadius: 24, child: card),
     );
   }
 }
 
+/// Statyczna gradientowa ramka 1.4px wokół zaokrąglonej karty.
+class _GradientBorderPainter extends CustomPainter {
+  const _GradientBorderPainter({required this.colors});
+
+  final List<Color> colors;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(
+      rect.deflate(0.7),
+      const Radius.circular(24),
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: colors,
+      ).createShader(rect);
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GradientBorderPainter oldDelegate) =>
+      oldDelegate.colors != colors;
+}
+
 /// Bohater pulpitu: ile zostało w tym okresie + delta + „ile dziennie".
-class _HeroCard extends StatelessWidget {
+///
+/// Na motywach neonowych: animowana neonowa ramka, glow i saldo malowane
+/// gradientem primary→accent (gdy dodatnie; ujemne zostaje czerwone,
+/// bo kolor niesie znaczenie).
+class _HeroCard extends ConsumerWidget {
   const _HeroCard({required this.summary, required this.range});
 
   final DashboardSummary summary;
   final DateRangeFilter range;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final variant = ref.watch(themeVariantProvider);
+    final neon = variant.hasNeonEffects;
     final fmt = NumberFormat.currency(
       locale: 'pl_PL',
       symbol: 'zł',
@@ -234,19 +341,63 @@ class _HeroCard extends StatelessWidget {
       now: now,
     );
 
-    return _V2Card(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color.alphaBlend(
-            cs.primary.withValues(alpha: 0.14),
-            cs.surfaceContainerHigh,
-          ),
-          cs.surfaceContainerHigh,
-        ],
+    Widget amount = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: AnimatedAmount(
+        cents: summary.balanceCents,
+        style: tt.displayLarge?.copyWith(
+          color: neon && positive ? Colors.white : accent,
+          fontWeight: FontWeight.w800,
+          height: 1.05,
+          shadows: neon
+              ? [
+                  Shadow(
+                    color: (positive ? cs.primary : accent)
+                        .withValues(alpha: 0.55),
+                    blurRadius: 26,
+                  ),
+                ]
+              : null,
+        ),
       ),
+    );
+    if (neon && positive) {
+      // Gradientowe saldo: indygo → cyjan (znak firmowy motywu Neo).
+      amount = ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (bounds) => LinearGradient(
+          colors: [cs.primary, variant.gradientAccent],
+        ).createShader(bounds),
+        child: amount,
+      );
+    }
+
+    final card = _V2Card(
+      glow: true,
+      animatedBorder: true,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      gradient: () {
+        // Szklane tło bohatera: mocniejszy zalew primary + przezroczystość
+        // nad aurorą na motywach neonowych.
+        final top = neon
+            ? cs.surfaceContainerHigh.withValues(alpha: 0.72)
+            : cs.surfaceContainerHigh;
+        final bottom = neon
+            ? cs.surfaceContainerHigh.withValues(alpha: 0.55)
+            : cs.surfaceContainerHigh;
+        return LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: neon ? 0.22 : 0.14),
+              top,
+            ),
+            bottom,
+          ],
+        );
+      }(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -272,18 +423,7 @@ class _HeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: AnimatedAmount(
-              cents: summary.balanceCents,
-              style: tt.displayLarge?.copyWith(
-                color: accent,
-                fontWeight: FontWeight.w800,
-                height: 1.05,
-              ),
-            ),
-          ),
+          amount,
           const SizedBox(height: 8),
           if (perDay != null)
             Row(
@@ -313,11 +453,14 @@ class _HeroCard extends StatelessWidget {
         ],
       ),
     );
+
+    // Rotująca neonowa ramka — aktywna tylko na motywach neonowych.
+    return AnimatedNeonBorder(borderRadius: 24, child: card);
   }
 }
 
 /// Mały kafelek statystyki (Dochody / Wydatki).
-class _MiniStatCard extends StatelessWidget {
+class _MiniStatCard extends ConsumerWidget {
   const _MiniStatCard({
     required this.label,
     required this.cents,
@@ -333,9 +476,10 @@ class _MiniStatCard extends StatelessWidget {
   final int? deltaPct;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
     return _V2Card(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -374,6 +518,15 @@ class _MiniStatCard extends StatelessWidget {
               style: tt.titleLarge?.copyWith(
                 color: accent,
                 fontWeight: FontWeight.w800,
+                // Neonowa poświata liczb na motywach neon.
+                shadows: neon
+                    ? [
+                        Shadow(
+                          color: accent.withValues(alpha: 0.6),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : null,
               ),
             ),
           ),
@@ -405,7 +558,7 @@ class _QuickActionsRow extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: FilledButton.tonalIcon(
+          child: GlowingFilledButton(
             onPressed: () {
               haptics.tap();
               context.push<void>(
@@ -413,13 +566,13 @@ class _QuickActionsRow extends ConsumerWidget {
                 extra: const TransactionPrefill(type: TransactionType.expense),
               );
             },
-            icon: const AppIcon(Icons.remove_circle_outline),
-            label: const Text('Wydatek'),
+            icon: Icons.remove_circle_outline,
+            child: const Text('Wydatek'),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: FilledButton.tonalIcon(
+          child: GlowingFilledButton(
             onPressed: () {
               haptics.tap();
               context.push<void>(
@@ -427,8 +580,8 @@ class _QuickActionsRow extends ConsumerWidget {
                 extra: const TransactionPrefill(type: TransactionType.income),
               );
             },
-            icon: const AppIcon(Icons.add_circle_outline),
-            label: const Text('Dochód'),
+            icon: Icons.add_circle_outline,
+            child: const Text('Dochód'),
           ),
         ),
         const SizedBox(width: 10),
@@ -446,14 +599,15 @@ class _QuickActionsRow extends ConsumerWidget {
 }
 
 /// Budżety: zbiorczy ring + trzy najbardziej „gorące" kategorie.
-class _BudgetsCard extends StatelessWidget {
+class _BudgetsCard extends ConsumerWidget {
   const _BudgetsCard({required this.budgets, required this.categories});
 
   final List<BudgetProgress> budgets;
   final List<Category> categories;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final fmt = NumberFormat.currency(
@@ -481,28 +635,43 @@ class _BudgetsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value: fraction.clamp(0.0, 1.0),
-                      strokeWidth: 5,
-                      strokeCap: StrokeCap.round,
-                      color: ringColor,
-                      backgroundColor: cs.surfaceContainerHighest,
-                    ),
-                    Center(
-                      child: Text(
-                        '${(fraction * 100).round()}%',
-                        style: tt.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  // Ring świeci swoim kolorem statusu na motywach neon.
+                  boxShadow: neon
+                      ? [
+                          BoxShadow(
+                            color: ringColor.withValues(alpha: 0.45),
+                            blurRadius: 18,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CircularProgressIndicator(
+                        value: fraction.clamp(0.0, 1.0),
+                        strokeWidth: 5,
+                        strokeCap: StrokeCap.round,
+                        color: ringColor,
+                        backgroundColor: cs.surfaceContainerHighest,
+                      ),
+                      Center(
+                        child: Text(
+                          '${(fraction * 100).round()}%',
+                          style: tt.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -556,18 +725,13 @@ class _BudgetsCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: p.fraction.clamp(0.0, 1.0),
-                      minHeight: 6,
-                      color: p.fraction >= 1
-                          ? cs.error
-                          : p.fraction >= 0.8
-                              ? AppTheme.expenseAccent
-                              : AppTheme.incomeAccent,
-                      backgroundColor: cs.surfaceContainerHighest,
-                    ),
+                  _Bar(
+                    value: p.fraction.clamp(0.0, 1.0),
+                    color: p.fraction >= 1
+                        ? cs.error
+                        : p.fraction >= 0.8
+                            ? AppTheme.expenseAccent
+                            : AppTheme.incomeAccent,
                   ),
                 ],
               ),
@@ -580,13 +744,14 @@ class _BudgetsCard extends StatelessWidget {
 }
 
 /// Trend salda narastająco — mały, „rzut oka" wykres bez osi.
-class _TrendCard extends StatelessWidget {
+class _TrendCard extends ConsumerWidget {
   const _TrendCard({required this.summary});
 
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final points = summary.runningBalancePoints;
@@ -619,6 +784,13 @@ class _TrendCard extends StatelessWidget {
                     color: accent,
                     barWidth: 3,
                     isStrokeCapRound: true,
+                    // Linia świeci na motywach neonowych.
+                    shadow: neon
+                        ? Shadow(
+                            color: accent.withValues(alpha: 0.7),
+                            blurRadius: 12,
+                          )
+                        : const Shadow(color: Colors.transparent),
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
@@ -722,15 +894,7 @@ class _TopCategoriesCard extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: t.share,
-                                minHeight: 6,
-                                color: color,
-                                backgroundColor: cs.surfaceContainerHighest,
-                              ),
-                            ),
+                            _Bar(value: t.share, color: color),
                           ],
                         ),
                       ),
@@ -932,6 +1096,202 @@ class _RecentCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Pasek postępu: na motywach neonowych gradient kolor→akcent motywu
+/// z delikatną poświatą; na pozostałych zwykły pasek.
+class _Bar extends ConsumerWidget {
+  const _Bar({required this.value, required this.color});
+
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final variant = ref.watch(themeVariantProvider);
+    final cs = Theme.of(context).colorScheme;
+    if (!variant.hasNeonEffects) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: LinearProgressIndicator(
+          value: value,
+          minHeight: 6,
+          color: color,
+          backgroundColor: cs.surfaceContainerHighest,
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: SizedBox(
+        height: 6,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(color: cs.surfaceContainerHighest),
+            ),
+            FractionallySizedBox(
+              widthFactor: value.clamp(0.0, 1.0),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      color,
+                      Color.lerp(color, variant.gradientAccent, 0.55)!,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Jednorazowe wejście karty: przesunięcie z dołu + pojawienie, z lekkim
+/// poślizgiem zależnym od pozycji. Czysto kosmetyczne, ~pół sekundy.
+class _Entrance extends StatelessWidget {
+  const _Entrance({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = (index * 0.09).clamp(0.0, 0.6);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 650),
+      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 22 * (1 - t)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Ambientowe tło „aurora": trzy wielkie, miękkie plamy światła
+/// (primary, akcent motywu i ich mieszanka), które bardzo powoli dryfują.
+/// Tylko motywy neonowe — na pozostałych nic nie rysujemy i nie tyka
+/// żaden ticker (ta sama zasada co [AnimatedNeonBorder]).
+class _AuroraBackdrop extends ConsumerStatefulWidget {
+  const _AuroraBackdrop();
+
+  @override
+  ConsumerState<_AuroraBackdrop> createState() => _AuroraBackdropState();
+}
+
+class _AuroraBackdropState extends ConsumerState<_AuroraBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 18),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final variant = ref.watch(themeVariantProvider);
+    if (!variant.hasNeonEffects) {
+      if (_controller.isAnimating) _controller.stop();
+      return const SizedBox.shrink();
+    }
+    if (!_controller.isAnimating) _controller.repeat();
+
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => CustomPaint(
+          painter: _AuroraPainter(
+            t: _controller.value,
+            primary: cs.primary,
+            accent: variant.gradientAccent,
+            isDark: isDark,
+          ),
+          size: Size.infinite,
+        ),
+      ),
+    );
+  }
+}
+
+class _AuroraPainter extends CustomPainter {
+  const _AuroraPainter({
+    required this.t,
+    required this.primary,
+    required this.accent,
+    required this.isDark,
+  });
+
+  final double t;
+  final Color primary;
+  final Color accent;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final phase = t * 2 * pi;
+    final base = isDark ? 0.30 : 0.12;
+    final radius = size.shortestSide * 0.85;
+
+    void blob(Color color, double cx, double cy, double alpha) {
+      final center = Offset(cx * size.width, cy * size.height);
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // Trzy plamy dryfują po własnych, powolnych orbitach.
+    blob(
+      primary,
+      0.15 + 0.10 * sin(phase),
+      0.12 + 0.08 * cos(phase * 0.8),
+      base,
+    );
+    blob(
+      accent,
+      0.85 + 0.09 * cos(phase * 0.7),
+      0.35 + 0.10 * sin(phase * 0.9),
+      base * 0.75,
+    );
+    blob(
+      Color.lerp(primary, accent, 0.5)!,
+      0.35 + 0.12 * sin(phase * 0.6 + 2),
+      0.85 + 0.07 * cos(phase * 0.5 + 1),
+      base * 0.6,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_AuroraPainter oldDelegate) => oldDelegate.t != t;
 }
 
 /// Mała pigułka z ikoną (delta w bohaterze).
