@@ -53,6 +53,46 @@ class NeonGradientBackground extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = scheme.primary;
     final accent = variant.gradientAccent;
+
+    // Neo: atmosfera jak w nowoczesnych fintechach — trzy WIDOCZNE,
+    // wielkie plamy światła (fiolet / magenta / cyjan) na fioletowym
+    // granacie, w całej apce. Statyczne (RepaintBoundary = zero kosztu
+    // przy scrollu); ruch dokłada aurora na samym pulpicie.
+    if (variant == AppThemeVariant.neo) {
+      final boost = isDark ? 1.0 : 0.45;
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: Stack(
+                children: [
+                  _AmbientBlob(
+                    center: const Alignment(-1.1, -0.95),
+                    radius: 1.1,
+                    color: primary,
+                    alpha: 0.34 * boost,
+                  ),
+                  _AmbientBlob(
+                    center: const Alignment(1.25, -0.1),
+                    radius: 0.95,
+                    color: const Color(0xFFFF4FD8), // magenta
+                    alpha: 0.20 * boost,
+                  ),
+                  _AmbientBlob(
+                    center: const Alignment(-0.5, 1.25),
+                    radius: 1.05,
+                    color: accent,
+                    alpha: 0.18 * boost,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          child,
+        ],
+      );
+    }
+
     // W ciemnym tle gradient mocniejszy (większa alpha), bo nie ginie
     // w niebycie. W jasnym subtelny.
     final alphaPrimary = isDark ? 0.18 : 0.08;
@@ -96,6 +136,36 @@ class NeonGradientBackground extends ConsumerWidget {
         ),
         child,
       ],
+    );
+  }
+}
+
+/// Jedna miękka plama światła (radial gradient do przezroczystości).
+class _AmbientBlob extends StatelessWidget {
+  const _AmbientBlob({
+    required this.center,
+    required this.radius,
+    required this.color,
+    required this.alpha,
+  });
+
+  final Alignment center;
+  final double radius;
+  final Color color;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: center,
+            radius: radius,
+            colors: [color.withValues(alpha: alpha), Colors.transparent],
+          ),
+        ),
+      ),
     );
   }
 }

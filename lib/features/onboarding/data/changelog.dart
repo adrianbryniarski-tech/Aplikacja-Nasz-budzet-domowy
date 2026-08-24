@@ -25,6 +25,28 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-24c',
+    date: '24 sierpnia 2026',
+    title: 'Pulpit i motyw Neo zaprojektowane od nowa',
+    changes: [
+      'Nowy pulpit dostał prawdziwy projekt, nie tylko efekty: karta '
+          'salda wygląda teraz jak karta premium (pełny gradient '
+          'indygo–fiolet–cyjan, wielka biała liczba, pasek pokazujący '
+          'ile okresu minęło), a cała apka na motywie Neo ma fioletową '
+          '„atmosferę" z miękkimi plamami światła.',
+      'Nowa typografia Inter (ta sama co w topowych apkach '
+          'finansowych) — liczby mają równe cyfry, więc nic nie '
+          '„skacze", a etykiety są drobne i spokojne.',
+      'Kolor zamieszkał w danych: linia salda malowana gradientem ze '
+          'świecącym punktem „dziś", licznik budżetów jako łuk '
+          'z gradientem, paski z zaokrąglonymi końcami. Zniknęły '
+          'przesadzone poświaty i tęczowe ramki.',
+      'Przyciski na Neo są teraz pigułkami, a karty to czyste '
+          '„szkło" z cienką jasną krawędzią. Najlepiej w trybie '
+          'ciemnym.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-24b',
     date: '24 sierpnia 2026',
     title: 'Reset wpisów i pewniejsze aktualizacje',

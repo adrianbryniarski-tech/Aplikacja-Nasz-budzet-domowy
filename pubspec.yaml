@@ -123,3 +123,19 @@ flutter:
     - family: ArchivoBlack
       fonts:
         - asset: assets/fonts/ArchivoBlack.ttf
+    # Inter — czysty grotesk „języka Stripe'a", tabelaryczne cyfry
+    # (motyw „Neo" i nowy pulpit). OFL 1.1 (licencja w Inter-LICENSE.txt).
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    # Inter Display — ciaśniejszy krój do WIELKICH liczb (saldo). OFL 1.1.
+    - family: InterDisplay
+      fonts:
+        - asset: assets/fonts/InterDisplay-Bold.ttf
+          weight: 700

@@ -93,6 +93,41 @@ void main() {
     });
   });
 
+  group('elapsedFractionOfRange — ile okresu minęło', () {
+    final start = DateTime(2026, 8);
+    final end = DateTime(2026, 8, 31, 23, 59, 59);
+
+    test('pierwszy dzień ≈ 1/31, ostatni = 1.0', () {
+      expect(
+        elapsedFractionOfRange(
+          rangeStart: start,
+          rangeEnd: end,
+          now: DateTime(2026, 8, 1, 9),
+        ),
+        closeTo(1 / 31, 0.001),
+      );
+      expect(
+        elapsedFractionOfRange(
+          rangeStart: start,
+          rangeEnd: end,
+          now: DateTime(2026, 8, 31, 21),
+        ),
+        1.0,
+      );
+    });
+
+    test('poza okresem → null', () {
+      expect(
+        elapsedFractionOfRange(
+          rangeStart: start,
+          rangeEnd: end,
+          now: DateTime(2026, 9, 2),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('dueLabel — etykieta terminu cyklicznej', () {
     final now = DateTime(2026, 8, 23, 14);
 
@@ -267,13 +302,10 @@ void main() {
 
       // Bohater + podpowiedź dzienna (saldo dodatnie: 1000 − 30 zł).
       expect(find.text('ZOSTAŁO W TYM OKRESIE'), findsOneWidget);
-      expect(
-        find.textContaining('dziennie do końca okresu'),
-        findsOneWidget,
-      );
-      // Kafle i sekcje.
-      expect(find.text('Dochody'), findsOneWidget);
-      expect(find.text('Wydatki'), findsOneWidget);
+      expect(find.textContaining('dziennie'), findsOneWidget);
+      // Kafle i sekcje (etykiety kafli są wersalikami — jak w projekcie).
+      expect(find.text('DOCHODY'), findsOneWidget);
+      expect(find.text('WYDATKI'), findsOneWidget);
       expect(find.text('Budżety'), findsOneWidget);
       expect(find.text('Na co idzie najwięcej'), findsOneWidget);
       expect(find.text('Ostatnie transakcje'), findsOneWidget);

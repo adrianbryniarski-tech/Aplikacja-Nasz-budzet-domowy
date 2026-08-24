@@ -17,25 +17,26 @@ import 'package:nasz_budzet_domowy/features/transactions/application/transaction
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/animated_amount.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/animated_neon_border.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
-import 'package:nasz_budzet_domowy/shared/widgets/glowing_button.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/manga_icons.dart';
 
-/// Nowy pulpit („Pulpit 2.0") — układ bento wg trendów 2025/26.
+/// Nowy pulpit („Pulpit 2.0") — projekt wg języka nowoczesnych fintechów.
 ///
-/// Projekt oparty na researchu (bento grid, fintech UX, Material 3
-/// Expressive, apki typu „safe to spend"):
-/// - hierarchia przez ROZMIAR kart: bohater „Zostało do wydania" na
-///   górze, mniejsze kafle niżej — oko znajduje najważniejsze od razu;
-/// - podpowiedź „≈ tyle dziennie do końca okresu" — dzienna rama
-///   zamiast miesięcznej sumy zmniejsza paraliż decyzyjny;
-/// - warstwowość: pulpit = szybki rzut oka, szczegóły są tap dalej
-///   (budżety, cykliczne, edycja transakcji);
-/// - duże zaokrąglenia, delikatny gradient, count-upy i haptyka —
-///   nowocześnie, ale wszystko na tokenach motywu (działa w każdym
-///   z 14 motywów i w trybie ciemnym).
+/// Zasady przeniesione z referencji (FLEX/Finity-podobne dashboardy,
+/// „Stripe visual language", metoda dataviz):
+/// - JEDEN nasycony, gradientowy obiekt-bohater (karta salda jak karta
+///   premium) — reszta ekranu to spokojne szkło, więc bohater niesie
+///   cały „wow";
+/// - typografia robi hierarchię: wielkie tabelaryczne liczby (Inter /
+///   Inter Display), malutkie wersalikowe etykiety, wyciszone opisy;
+/// - kolor żyje W DANYCH: gradientowa linia wykresu ze świecącym
+///   punktem „dziś", sweep-gradient na ringu budżetów, paski postępu
+///   z zaokrąglonymi końcami — a NIE w poświatach na tekstach;
+/// - szkło bez tęczowych ramek: półprzezroczysta powierzchnia nad
+///   ambientem + cienka jasna ramka 1px (jak frosted glass);
+/// - wszystko na tokenach motywu — na motywach nie-neonowych karty są
+///   zwykłe, a bohater przechodzi na kolory motywu.
 class DashboardV2Body extends ConsumerWidget {
   const DashboardV2Body({
     required this.summary,
@@ -57,8 +58,7 @@ class DashboardV2Body extends ConsumerWidget {
 
     return Stack(
       children: [
-        // Ambientowe, dryfujące plamy światła za kartami — tylko motywy
-        // neonowe (na czele z „Neo"). Na pozostałych: nic (zero kosztu).
+        // Dryfujące plamy światła za kartami — tylko motywy neonowe.
         const Positioned.fill(child: _AuroraBackdrop()),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
@@ -154,6 +154,22 @@ int daysLeftInRange(DateTime rangeEnd, DateTime now) {
   return lastDay.difference(today).inDays + 1;
 }
 
+/// Jaka część okresu już MINĘŁA (0..1) — cienka linia postępu na
+/// bohaterze. `null` gdy okres nie obejmuje dzisiaj.
+double? elapsedFractionOfRange({
+  required DateTime rangeStart,
+  required DateTime rangeEnd,
+  required DateTime now,
+}) {
+  final today = DateTime(now.year, now.month, now.day);
+  final first = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+  final last = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+  if (today.isBefore(first) || today.isAfter(last)) return null;
+  final total = last.difference(first).inDays + 1;
+  final gone = today.difference(first).inDays + 1;
+  return (gone / total).clamp(0.0, 1.0);
+}
+
 /// Etykieta terminu cyklicznej płatności: „dziś", „jutro", „za N dni",
 /// „zaległa" (termin minął — naliczy się przy najbliższym odświeżeniu).
 String dueLabel(DateTime due, DateTime now) {
@@ -183,33 +199,61 @@ List<({String categoryId, int cents, double share})> topExpenseCategories(
 }
 
 // ---------------------------------------------------------------------------
+// Typografia liczb — tabelaryczne cyfry, ciasny tracking.
+// ---------------------------------------------------------------------------
+
+/// Styl dużych liczb: tabelaryczne cyfry (równe kolumny — cyfry nie
+/// „skaczą" przy count-upie), ciasny tracking, wysokość 1.0.
+/// Na Neo dodatkowo Inter/Inter Display (reszta motywów: krój motywu).
+TextStyle _numStyle(
+  TextStyle? base, {
+  required bool neonFont,
+  double? size,
+  FontWeight weight = FontWeight.w700,
+  Color? color,
+  bool display = false,
+}) {
+  return (base ?? const TextStyle()).copyWith(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: 1,
+    letterSpacing: display ? -1.2 : -0.3,
+    fontFamily: neonFont ? (display ? 'InterDisplay' : 'Inter') : null,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+}
+
+/// Malutka wersalikowa etykieta (jak w referencjach: cichy podpis nad
+/// wielką liczbą).
+TextStyle _labelStyle(TextStyle? base, Color color) {
+  return (base ?? const TextStyle()).copyWith(
+    fontSize: 10.5,
+    letterSpacing: 1.4,
+    fontWeight: FontWeight.w600,
+    color: color,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Karty.
 // ---------------------------------------------------------------------------
 
-/// Wspólna baza kart V2: duże zaokrąglenie, powierzchnia z tokenów,
-/// w motywach komiksowych gruby kontur + komiksowy cień.
-///
-/// Na motywach neonowych (Neo, Cyber, Synthwave, Galaktyka) karta robi
-/// się „szklana": półprzezroczysta nad aurorą, ze statyczną gradientową
-/// ramką primary→accent; [glow] dodaje miękką poświatę wokół karty,
-/// [animatedBorder] wyłącza statyczną ramkę (bo kartę okala wtedy
-/// [AnimatedNeonBorder]).
+/// Wspólna baza kart V2 — „frosted glass" bez tęczy:
+/// - motywy neonowe: półprzezroczysta powierzchnia nad ambientem +
+///   cienka JASNA ramka 1px (biel ~10%), duży promień;
+/// - motywy komiksowe: gruby kontur + komiksowy cień (jak wszędzie);
+/// - reszta: zwykła karta z tokenów.
 class _V2Card extends ConsumerWidget {
   const _V2Card({
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.gradient,
     this.onTap,
-    this.glow = false,
-    this.animatedBorder = false,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
-  final Gradient? gradient;
   final VoidCallback? onTap;
-  final bool glow;
-  final bool animatedBorder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -217,20 +261,28 @@ class _V2Card extends ConsumerWidget {
     final variant = ref.watch(themeVariantProvider);
     final ink = comicInk(variant, Theme.of(context).scaffoldBackgroundColor);
     final neon = variant.hasNeonEffects;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Szkło nad aurorą: karta przepuszcza odrobinę tła.
     final fill = neon
-        ? cs.surfaceContainerHigh.withValues(alpha: 0.62)
+        ? cs.surfaceContainerHigh.withValues(alpha: isDark ? 0.55 : 0.72)
         : cs.surfaceContainerHigh;
+    final border = variant.isComic
+        ? Border.all(color: ink, width: 2.5)
+        : neon
+            ? Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+              )
+            : null;
 
-    Widget card = Material(
-      color: gradient == null ? fill : Colors.transparent,
+    final card = Material(
+      color: fill,
       borderRadius: BorderRadius.circular(24),
       child: Ink(
         decoration: BoxDecoration(
-          gradient: gradient,
           borderRadius: BorderRadius.circular(24),
-          border: variant.isComic ? Border.all(color: ink, width: 2.5) : null,
+          border: border,
         ),
         child: InkWell(
           onTap: onTap,
@@ -240,78 +292,16 @@ class _V2Card extends ConsumerWidget {
       ),
     );
 
-    if (neon && !animatedBorder) {
-      card = CustomPaint(
-        foregroundPainter: _GradientBorderPainter(
-          colors: [
-            cs.primary.withValues(alpha: 0.55),
-            variant.gradientAccent.withValues(alpha: 0.55),
-          ],
-        ),
-        child: card,
-      );
-    }
-    if (neon && glow) {
-      card = DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.30),
-              blurRadius: 28,
-              spreadRadius: -2,
-            ),
-            BoxShadow(
-              color: variant.gradientAccent.withValues(alpha: 0.16),
-              blurRadius: 44,
-              spreadRadius: -6,
-            ),
-          ],
-        ),
-        child: card,
-      );
-    }
-
     return RepaintBoundary(
       child: ComicShadow(borderRadius: 24, child: card),
     );
   }
 }
 
-/// Statyczna gradientowa ramka 1.4px wokół zaokrąglonej karty.
-class _GradientBorderPainter extends CustomPainter {
-  const _GradientBorderPainter({required this.colors});
-
-  final List<Color> colors;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(
-      rect.deflate(0.7),
-      const Radius.circular(24),
-    );
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: colors,
-      ).createShader(rect);
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_GradientBorderPainter oldDelegate) =>
-      oldDelegate.colors != colors;
-}
-
-/// Bohater pulpitu: ile zostało w tym okresie + delta + „ile dziennie".
-///
-/// Na motywach neonowych: animowana neonowa ramka, glow i saldo malowane
-/// gradientem primary→accent (gdy dodatnie; ujemne zostaje czerwone,
-/// bo kolor niesie znaczenie).
+/// Bohater pulpitu — JEDYNY nasycony obiekt na ekranie, jak karta
+/// premium z referencji: pełny gradient indygo→fiolet→cyjan, wielka
+/// biała liczba (Inter Display, tabelaryczna), delta w białej pigułce,
+/// cienka linia postępu okresu i podpowiedź „ile dziennie".
 class _HeroCard extends ConsumerWidget {
   const _HeroCard({required this.summary, required this.range});
 
@@ -330,7 +320,6 @@ class _HeroCard extends ConsumerWidget {
       decimalDigits: 0,
     );
     final positive = summary.balanceCents >= 0;
-    final accent = positive ? AppTheme.incomeAccent : AppTheme.expenseAccent;
     final delta = summary.deltaCents;
     final deltaUp = delta >= 0;
     final now = DateTime.now();
@@ -340,126 +329,204 @@ class _HeroCard extends ConsumerWidget {
       rangeEnd: range.end,
       now: now,
     );
-
-    Widget amount = FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: AnimatedAmount(
-        cents: summary.balanceCents,
-        style: tt.displayLarge?.copyWith(
-          color: neon && positive ? Colors.white : accent,
-          fontWeight: FontWeight.w800,
-          height: 1.05,
-          shadows: neon
-              ? [
-                  Shadow(
-                    color: (positive ? cs.primary : accent)
-                        .withValues(alpha: 0.55),
-                    blurRadius: 26,
-                  ),
-                ]
-              : null,
-        ),
-      ),
+    final elapsed = elapsedFractionOfRange(
+      rangeStart: range.start,
+      rangeEnd: range.end,
+      now: now,
     );
-    if (neon && positive) {
-      // Gradientowe saldo: indygo → cyjan (znak firmowy motywu Neo).
-      amount = ShaderMask(
-        blendMode: BlendMode.srcIn,
-        shaderCallback: (bounds) => LinearGradient(
-          colors: [cs.primary, variant.gradientAccent],
-        ).createShader(bounds),
-        child: amount,
-      );
-    }
 
-    final card = _V2Card(
-      glow: true,
-      animatedBorder: true,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      gradient: () {
-        // Szklane tło bohatera: mocniejszy zalew primary + przezroczystość
-        // nad aurorą na motywach neonowych.
-        final top = neon
-            ? cs.surfaceContainerHigh.withValues(alpha: 0.72)
-            : cs.surfaceContainerHigh;
-        final bottom = neon
-            ? cs.surfaceContainerHigh.withValues(alpha: 0.55)
-            : cs.surfaceContainerHigh;
-        return LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(
-              cs.primary.withValues(alpha: neon ? 0.22 : 0.14),
-              top,
-            ),
-            bottom,
-          ],
-        );
-      }(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'ZOSTAŁO W TYM OKRESIE',
-                  style: tt.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              _Pill(
-                icon: deltaUp
-                    ? Icons.arrow_upward_rounded
-                    : Icons.arrow_downward_rounded,
-                label: '${deltaUp ? '+' : ''}${fmt.format(delta / 100)}',
-                color: deltaUp ? AppTheme.incomeAccent : AppTheme.expenseAccent,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          amount,
-          const SizedBox(height: 8),
-          if (perDay != null)
-            Row(
-              children: [
-                Icon(
-                  Icons.wb_sunny_outlined,
-                  size: 15,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    '≈ ${fmt.format(perDay / 100)} dziennie do końca okresu '
-                    '(${daysLeftInRange(range.end, now)} dni)',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
+    // Kolory bohatera. Neon: nasycony gradient (ujemne saldo = gradient
+    // w czerwieniach — kolor niesie znaczenie). Inne motywy: zalew
+    // primary na tokenach, kolory tekstu z motywu.
+    final Gradient bg;
+    final Color onHero;
+    final Color onHeroMuted;
+    if (neon) {
+      bg = positive
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.lerp(cs.primary, const Color(0xFF5B4CFF), 0.4)!,
+                const Color(0xFF8B5CF6),
+                Color.lerp(variant.gradientAccent, Colors.black, 0.05)!,
               ],
             )
-          else
-            Text(
-              positive
-                  ? 'Dochody minus wydatki w wybranym okresie.'
-                  : 'W tym okresie wydaliście więcej, niż weszło.',
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          : const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF56233E), Color(0xFFB0436E)],
+            );
+      onHero = Colors.white;
+      onHeroMuted = Colors.white.withValues(alpha: 0.72);
+    } else {
+      bg = LinearGradient(
+        colors: [
+          Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.16),
+            cs.surfaceContainerHigh,
+          ),
+          cs.surfaceContainerHigh,
+        ],
+      );
+      onHero = positive ? AppTheme.incomeAccent : AppTheme.expenseAccent;
+      onHeroMuted = cs.onSurfaceVariant;
+    }
+
+    final ink = comicInk(variant, Theme.of(context).scaffoldBackgroundColor);
+    final card = Container(
+      decoration: BoxDecoration(
+        gradient: bg,
+        borderRadius: BorderRadius.circular(28),
+        border: variant.isComic ? Border.all(color: ink, width: 2.5) : null,
+        boxShadow: neon
+            ? [
+                BoxShadow(
+                  color: (positive ? cs.primary : const Color(0xFFB0436E))
+                      .withValues(alpha: 0.35),
+                  blurRadius: 36,
+                  offset: const Offset(0, 10),
+                  spreadRadius: -8,
+                ),
+              ]
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Dekoracyjne, ledwo widoczne okręgi — jak na kartach premium.
+          if (neon) ...[
+            const _DecorCircle(right: -70, top: -80, size: 220, alpha: 0.10),
+            const _DecorCircle(right: 30, bottom: -110, size: 180, alpha: 0.07),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'ZOSTAŁO W TYM OKRESIE',
+                        style: _labelStyle(tt.labelSmall, onHeroMuted),
+                      ),
+                    ),
+                    _Pill(
+                      icon: deltaUp
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded,
+                      label: '${deltaUp ? '+' : ''}${fmt.format(delta / 100)}',
+                      color: neon
+                          ? Colors.white
+                          : (deltaUp
+                              ? AppTheme.incomeAccent
+                              : AppTheme.expenseAccent),
+                      onGradient: neon,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedAmount(
+                    cents: summary.balanceCents,
+                    style: _numStyle(
+                      tt.displayLarge,
+                      neonFont: neon,
+                      size: 46,
+                      color: onHero,
+                      display: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (elapsed != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      height: 4,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: ColoredBox(
+                              color: neon
+                                  ? Colors.white.withValues(alpha: 0.22)
+                                  : cs.surfaceContainerHighest,
+                            ),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: elapsed,
+                            child: ColoredBox(
+                              color: neon ? Colors.white : cs.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Text(
+                  perDay != null
+                      ? '≈ ${fmt.format(perDay / 100)} dziennie · zostało '
+                          '${daysLeftInRange(range.end, now)} dni'
+                      : positive
+                          ? 'Dochody minus wydatki w wybranym okresie.'
+                          : 'W tym okresie wydaliście więcej, niż weszło.',
+                  style: tt.bodySmall?.copyWith(color: onHeroMuted),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
 
-    // Rotująca neonowa ramka — aktywna tylko na motywach neonowych.
-    return AnimatedNeonBorder(borderRadius: 24, child: card);
+    return RepaintBoundary(child: ComicShadow(borderRadius: 28, child: card));
   }
 }
 
-/// Mały kafelek statystyki (Dochody / Wydatki).
+/// Ledwo widoczny biały okrąg — dekoracja bohatera.
+class _DecorCircle extends StatelessWidget {
+  const _DecorCircle({
+    required this.size,
+    required this.alpha,
+    this.right,
+    this.top,
+    this.bottom,
+  });
+
+  final double size;
+  final double alpha;
+  final double? right;
+  final double? top;
+  final double? bottom;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: right,
+      top: top,
+      bottom: bottom,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: alpha),
+            width: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mały kafelek statystyki (Dochody / Wydatki): cicha etykieta
+/// wersalikami, duża tabelaryczna liczba w kolorze znaczenia.
 class _MiniStatCard extends ConsumerWidget {
   const _MiniStatCard({
     required this.label,
@@ -488,51 +555,42 @@ class _MiniStatCard extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 16, color: accent),
+                child: Icon(icon, size: 15, color: accent),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  label,
-                  style: tt.labelMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  label.toUpperCase(),
+                  style: _labelStyle(tt.labelSmall, cs.onSurfaceVariant),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: AnimatedAmount(
               cents: cents,
               decimalDigits: 0,
-              style: tt.titleLarge?.copyWith(
+              style: _numStyle(
+                tt.titleLarge,
+                neonFont: neon,
+                size: 24,
                 color: accent,
-                fontWeight: FontWeight.w800,
-                // Neonowa poświata liczb na motywach neon.
-                shadows: neon
-                    ? [
-                        Shadow(
-                          color: accent.withValues(alpha: 0.6),
-                          blurRadius: 14,
-                        ),
-                      ]
-                    : null,
               ),
             ),
           ),
           if (deltaPct != null)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 4),
               child: Text(
                 '${deltaPct! >= 0 ? '+' : ''}$deltaPct% vs poprzedni',
                 style: tt.labelSmall?.copyWith(
@@ -548,7 +606,8 @@ class _MiniStatCard extends ConsumerWidget {
   }
 }
 
-/// Szybkie akcje — jedno stuknięcie do najczęstszych czynności.
+/// Szybkie akcje jak w referencjach (Deposit/Transfer): jedna pełna
+/// pigułka, jedna stonowana i okrągły przycisk importu.
 class _QuickActionsRow extends ConsumerWidget {
   const _QuickActionsRow();
 
@@ -558,7 +617,8 @@ class _QuickActionsRow extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: GlowingFilledButton(
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
             onPressed: () {
               haptics.tap();
               context.push<void>(
@@ -566,13 +626,14 @@ class _QuickActionsRow extends ConsumerWidget {
                 extra: const TransactionPrefill(type: TransactionType.expense),
               );
             },
-            icon: Icons.remove_circle_outline,
-            child: const Text('Wydatek'),
+            icon: const AppIcon(Icons.remove_circle_outline, size: 20),
+            label: const Text('Wydatek'),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: GlowingFilledButton(
+          child: FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
             onPressed: () {
               haptics.tap();
               context.push<void>(
@@ -580,8 +641,8 @@ class _QuickActionsRow extends ConsumerWidget {
                 extra: const TransactionPrefill(type: TransactionType.income),
               );
             },
-            icon: Icons.add_circle_outline,
-            child: const Text('Dochód'),
+            icon: const AppIcon(Icons.add_circle_outline, size: 20),
+            label: const Text('Dochód'),
           ),
         ),
         const SizedBox(width: 10),
@@ -598,7 +659,8 @@ class _QuickActionsRow extends ConsumerWidget {
   }
 }
 
-/// Budżety: zbiorczy ring + trzy najbardziej „gorące" kategorie.
+/// Budżety: gauge ze sweep-gradientem (jak w referencyjnych neonowych
+/// infografikach) + trzy najbardziej „gorące" kategorie z paskami.
 class _BudgetsCard extends ConsumerWidget {
   const _BudgetsCard({required this.budgets, required this.categories});
 
@@ -607,7 +669,8 @@ class _BudgetsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
+    final variant = ref.watch(themeVariantProvider);
+    final neon = variant.hasNeonEffects;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final fmt = NumberFormat.currency(
@@ -623,11 +686,18 @@ class _BudgetsCard extends ConsumerWidget {
     );
     final totalSpent = budgets.fold<int>(0, (sum, p) => sum + p.spentCents);
     final fraction = totalLimit == 0 ? 0.0 : totalSpent / totalLimit;
-    final ringColor = fraction >= 1
+
+    // Status ma zarezerwowane kolory: zdrowo = gradient marki (neon) /
+    // zieleń, blisko limitu = pomarańcz, przekroczone = czerwień.
+    final healthy = fraction < 0.8;
+    final statusColor = fraction >= 1
         ? cs.error
         : fraction >= 0.8
             ? AppTheme.expenseAccent
             : AppTheme.incomeAccent;
+    final ringGradient = neon && healthy
+        ? [cs.primary, variant.gradientAccent]
+        : [statusColor, statusColor];
 
     return _V2Card(
       child: Column(
@@ -635,46 +705,30 @@ class _BudgetsCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  // Ring świeci swoim kolorem statusu na motywach neon.
-                  boxShadow: neon
-                      ? [
-                          BoxShadow(
-                            color: ringColor.withValues(alpha: 0.45),
-                            blurRadius: 18,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CircularProgressIndicator(
-                        value: fraction.clamp(0.0, 1.0),
-                        strokeWidth: 5,
-                        strokeCap: StrokeCap.round,
-                        color: ringColor,
-                        backgroundColor: cs.surfaceContainerHighest,
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: CustomPaint(
+                  painter: _GaugePainter(
+                    fraction: fraction.clamp(0.0, 1.0),
+                    colors: ringGradient,
+                    track: neon
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : cs.surfaceContainerHighest,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${(fraction * 100).round()}%',
+                      style: _numStyle(
+                        tt.labelSmall,
+                        neonFont: neon,
+                        size: 13,
                       ),
-                      Center(
-                        child: Text(
-                          '${(fraction * 100).round()}%',
-                          style: tt.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,6 +739,7 @@ class _BudgetsCard extends ConsumerWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '${fmt.format(totalSpent / 100)} '
                       'z ${fmt.format(totalLimit / 100)} limitów',
@@ -697,7 +752,7 @@ class _BudgetsCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           for (final p in budgets.take(3)) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -718,13 +773,17 @@ class _BudgetsCard extends ConsumerWidget {
                       Text(
                         '${fmt.format(p.spentCents / 100)}'
                         ' / ${fmt.format(p.budget.amountCents / 100)}',
-                        style: tt.labelSmall?.copyWith(
+                        style: _numStyle(
+                          tt.labelSmall,
+                          neonFont: neon,
+                          size: 11,
+                          weight: FontWeight.w600,
                           color: cs.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   _Bar(
                     value: p.fraction.clamp(0.0, 1.0),
                     color: p.fraction >= 1
@@ -743,7 +802,61 @@ class _BudgetsCard extends ConsumerWidget {
   }
 }
 
-/// Trend salda narastająco — mały, „rzut oka" wykres bez osi.
+/// Gauge 270° ze sweep-gradientem i zaokrąglonymi końcami.
+class _GaugePainter extends CustomPainter {
+  const _GaugePainter({
+    required this.fraction,
+    required this.colors,
+    required this.track,
+  });
+
+  final double fraction;
+  final List<Color> colors;
+  final Color track;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 6.0;
+    final rect = Offset.zero & size;
+    final arcRect = rect.deflate(stroke / 2);
+    // 270° łuku, otwarcie na dole (jak w referencyjnych gauge'ach).
+    const startAngle = 3 * pi / 4;
+    const sweepMax = 3 * pi / 2;
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = track;
+    canvas.drawArc(arcRect, startAngle, sweepMax, false, trackPaint);
+
+    if (fraction <= 0) return;
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: startAngle,
+        endAngle: startAngle + sweepMax,
+        colors: colors,
+        transform: const GradientRotation(0),
+      ).createShader(rect);
+    canvas.drawArc(
+      arcRect,
+      startAngle,
+      sweepMax * fraction,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GaugePainter old) =>
+      old.fraction != fraction || old.colors != colors || old.track != track;
+}
+
+/// Trend salda — linia malowana gradientem marki ze świecącym punktem
+/// na OSTATNIM dniu (kolor w danych, nie w poświacie).
 class _TrendCard extends ConsumerWidget {
   const _TrendCard({required this.summary});
 
@@ -751,17 +864,21 @@ class _TrendCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
+    final variant = ref.watch(themeVariantProvider);
+    final neon = variant.hasNeonEffects;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final points = summary.runningBalancePoints;
     final accent = summary.balanceCents >= 0
         ? AppTheme.incomeAccent
         : AppTheme.expenseAccent;
+    final lineColors =
+        neon ? [cs.primary, variant.gradientAccent] : [accent, accent];
     final spots = [
       for (final (i, p) in points.indexed)
         FlSpot(i.toDouble(), p.balanceCents / 100),
     ];
+    final lastX = (points.length - 1).toDouble();
 
     return _V2Card(
       child: Column(
@@ -773,7 +890,7 @@ class _TrendCard extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 88,
+            height: 92,
             child: LineChart(
               LineChartData(
                 lineBarsData: [
@@ -781,25 +898,28 @@ class _TrendCard extends ConsumerWidget {
                     spots: spots,
                     isCurved: true,
                     curveSmoothness: 0.3,
-                    color: accent,
-                    barWidth: 3,
+                    gradient: LinearGradient(colors: lineColors),
+                    barWidth: 2.5,
                     isStrokeCapRound: true,
-                    // Linia świeci na motywach neonowych.
-                    shadow: neon
-                        ? Shadow(
-                            color: accent.withValues(alpha: 0.7),
-                            blurRadius: 12,
-                          )
-                        : const Shadow(color: Colors.transparent),
-                    dotData: const FlDotData(show: false),
+                    // Świecący punkt tylko na "dzisiaj" (ostatni pomiar).
+                    dotData: FlDotData(
+                      checkToShowDot: (spot, bar) => spot.x == lastX,
+                      getDotPainter: (spot, pct, bar, idx) =>
+                          FlDotCirclePainter(
+                        radius: 3.5,
+                        color: Colors.white,
+                        strokeWidth: 4,
+                        strokeColor: lineColors.last.withValues(alpha: 0.45),
+                      ),
+                    ),
                     belowBarData: BarAreaData(
                       show: true,
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          accent.withValues(alpha: 0.25),
-                          accent.withValues(alpha: 0),
+                          lineColors.first.withValues(alpha: 0.20),
+                          lineColors.last.withValues(alpha: 0),
                         ],
                       ),
                     ),
@@ -813,7 +933,7 @@ class _TrendCard extends ConsumerWidget {
               duration: const Duration(milliseconds: 400),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             'Każdy punkt to dzień z transakcją — linia w górę = '
             'zostaje Wam więcej.',
@@ -826,14 +946,15 @@ class _TrendCard extends ConsumerWidget {
 }
 
 /// Trzy kategorie, które zjadają najwięcej — z udziałem procentowym.
-class _TopCategoriesCard extends StatelessWidget {
+class _TopCategoriesCard extends ConsumerWidget {
   const _TopCategoriesCard({required this.summary, required this.categories});
 
   final DashboardSummary summary;
   final List<Category> categories;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final fmt = NumberFormat.currency(
@@ -887,13 +1008,17 @@ class _TopCategoriesCard extends StatelessWidget {
                                 Text(
                                   '${fmt.format(t.cents / 100)}'
                                   ' · ${(t.share * 100).round()}%',
-                                  style: tt.labelSmall?.copyWith(
+                                  style: _numStyle(
+                                    tt.labelSmall,
+                                    neonFont: neon,
+                                    size: 11,
+                                    weight: FontWeight.w600,
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 5),
                             _Bar(value: t.share, color: color),
                           ],
                         ),
@@ -910,8 +1035,7 @@ class _TopCategoriesCard extends StatelessWidget {
   }
 }
 
-/// Nadchodzące płatności cykliczne (czynsz, abonamenty…) — tap otwiera
-/// pełną listę.
+/// Nadchodzące płatności cykliczne — tap otwiera pełną listę.
 class _UpcomingCard extends ConsumerWidget {
   const _UpcomingCard();
 
@@ -965,7 +1089,7 @@ class _UpcomingCard extends ConsumerWidget {
                       height: 30,
                       decoration: BoxDecoration(
                         color: cs.primary.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         Icons.event_repeat_rounded,
@@ -1011,6 +1135,7 @@ class _RecentCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
     final txsAsync = ref.watch(filteredTransactionsProvider);
     final byId = {for (final c in categories) c.id: c};
     final txs = [...(txsAsync.value ?? const <Transaction>[])]..sort((a, b) {
@@ -1080,8 +1205,11 @@ class _RecentCard extends ConsumerWidget {
                       Text(
                         '${t.type == TransactionType.income ? '+' : '−'}'
                         '${fmt.format(t.amountCents / 100)}',
-                        style: tt.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+                        style: _numStyle(
+                          tt.bodySmall,
+                          neonFont: neon,
+                          size: 13,
+                          weight: FontWeight.w600,
                           color: t.type == TransactionType.income
                               ? AppTheme.incomeAccent
                               : AppTheme.expenseAccent,
@@ -1098,8 +1226,8 @@ class _RecentCard extends ConsumerWidget {
   }
 }
 
-/// Pasek postępu: na motywach neonowych gradient kolor→akcent motywu
-/// z delikatną poświatą; na pozostałych zwykły pasek.
+/// Pasek postępu z zaokrąglonymi końcami; na neonach delikatny gradient
+/// w stronę akcentu motywu (kolor w danych, bez poświat).
 class _Bar extends ConsumerWidget {
   const _Bar({required this.value, required this.color});
 
@@ -1110,47 +1238,40 @@ class _Bar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final variant = ref.watch(themeVariantProvider);
     final cs = Theme.of(context).colorScheme;
-    if (!variant.hasNeonEffects) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: LinearProgressIndicator(
-          value: value,
-          minHeight: 6,
-          color: color,
-          backgroundColor: cs.surfaceContainerHighest,
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: SizedBox(
-        height: 6,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ColoredBox(color: cs.surfaceContainerHighest),
-            ),
-            FractionallySizedBox(
-              widthFactor: value.clamp(0.0, 1.0),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      color,
-                      Color.lerp(color, variant.gradientAccent, 0.55)!,
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.6),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
+    final neon = variant.hasNeonEffects;
+    final track = neon
+        ? Colors.white.withValues(alpha: 0.10)
+        : cs.surfaceContainerHighest;
+    return SizedBox(
+      height: 6,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: track,
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
-          ],
-        ),
+          ),
+          FractionallySizedBox(
+            widthFactor: value.clamp(0.0, 1.0),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                gradient: neon
+                    ? LinearGradient(
+                        colors: [
+                          color,
+                          Color.lerp(color, variant.gradientAccent, 0.45)!,
+                        ],
+                      )
+                    : null,
+                color: neon ? null : color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1184,9 +1305,9 @@ class _Entrance extends StatelessWidget {
 }
 
 /// Ambientowe tło „aurora": trzy wielkie, miękkie plamy światła
-/// (primary, akcent motywu i ich mieszanka), które bardzo powoli dryfują.
+/// (primary, akcent motywu i magenta), które bardzo powoli dryfują.
 /// Tylko motywy neonowe — na pozostałych nic nie rysujemy i nie tyka
-/// żaden ticker (ta sama zasada co [AnimatedNeonBorder]).
+/// żaden ticker (ta sama zasada co AnimatedNeonBorder).
 class _AuroraBackdrop extends ConsumerStatefulWidget {
   const _AuroraBackdrop();
 
@@ -1257,7 +1378,9 @@ class _AuroraPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final phase = t * 2 * pi;
-    final base = isDark ? 0.30 : 0.12;
+    // Statyczny ambient daje bazę w NeonGradientBackground — aurora
+    // tylko dokłada RUCH, więc jest delikatniejsza.
+    final base = isDark ? 0.20 : 0.09;
     final radius = size.shortestSide * 0.85;
 
     void blob(Color color, double cx, double cy, double alpha) {
@@ -1269,7 +1392,6 @@ class _AuroraPainter extends CustomPainter {
       canvas.drawCircle(center, radius, paint);
     }
 
-    // Trzy plamy dryfują po własnych, powolnych orbitach.
     blob(
       primary,
       0.15 + 0.10 * sin(phase),
@@ -1283,10 +1405,10 @@ class _AuroraPainter extends CustomPainter {
       base * 0.75,
     );
     blob(
-      Color.lerp(primary, accent, 0.5)!,
+      const Color(0xFFFF4FD8),
       0.35 + 0.12 * sin(phase * 0.6 + 2),
       0.85 + 0.07 * cos(phase * 0.5 + 1),
-      base * 0.6,
+      base * 0.55,
     );
   }
 
@@ -1294,21 +1416,31 @@ class _AuroraPainter extends CustomPainter {
   bool shouldRepaint(_AuroraPainter oldDelegate) => oldDelegate.t != t;
 }
 
-/// Mała pigułka z ikoną (delta w bohaterze).
+/// Mała pigułka z ikoną (delta w bohaterze). Na gradientowym tle:
+/// biała półprzezroczysta; na zwykłym: barwiona kolorem znaczenia.
 class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label, required this.color});
+  const _Pill({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onGradient = false,
+  });
 
   final IconData icon;
   final String label;
   final Color color;
+  final bool onGradient;
 
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final bg = onGradient
+        ? Colors.white.withValues(alpha: 0.16)
+        : color.withValues(alpha: 0.14);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: bg,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1321,6 +1453,7 @@ class _Pill extends StatelessWidget {
             style: tt.labelSmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

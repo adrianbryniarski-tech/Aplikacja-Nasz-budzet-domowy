@@ -139,10 +139,11 @@ class HelpScreen extends StatelessWidget {
                   'Można wrócić do klasycznego w każdej chwili — nic nie '
                   'przepada.',
               'Razem z nowym pulpitem włącza się pasujący do niego motyw '
-                  '„Neo" (elektryczny indygo z cyjanowym neonem — najlepiej '
-                  'wygląda w trybie ciemnym). Po wyłączeniu pulpitu wraca '
-                  'Twój poprzedni motyw, a w każdej chwili możesz wybrać '
-                  'inny w sekcji Motyw.',
+                  '„Neo": fioletowy granat z miękkimi plamami światła, '
+                  'czysta typografia Inter i pigułkowe przyciski — '
+                  'najlepiej wygląda w trybie ciemnym. Po wyłączeniu '
+                  'pulpitu wraca Twój poprzedni motyw, a w każdej chwili '
+                  'możesz wybrać inny w sekcji Motyw.',
               'Największa karta u góry pokazuje, ILE ZOSTAŁO do wydania '
                   'w wybranym okresie, a pod spodem podpowiedź „≈ tyle '
                   'dziennie do końca okresu" — łatwiej trzymać się planu '
