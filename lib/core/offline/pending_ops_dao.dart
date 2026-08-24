@@ -110,6 +110,18 @@ class PendingOpsDao {
     _changes.add(null);
   }
 
+  /// Czyści całą kolejkę offline gospodarstwa — używane przy „Zacznij od
+  /// nowa", żeby stare, niewysłane wpisy nie wróciły po resecie.
+  Future<void> removeForHousehold(String householdId) async {
+    final db = await _db.database;
+    await db.delete(
+      'pending_transactions',
+      where: 'household_id = ?',
+      whereArgs: [householdId],
+    );
+    _changes.add(null);
+  }
+
   /// Stream odpalany na każdą mutację — konsument robi `listForHousehold`
   /// żeby dostać świeżą listę. Pierwsza wartość emitowana natychmiast
   /// po subskrypcji żeby UI nie wisiał na pustym ekranie.

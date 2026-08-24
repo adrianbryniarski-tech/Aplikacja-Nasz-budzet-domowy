@@ -208,6 +208,20 @@ class TransactionRepository {
         .timeout(kSupabaseWriteTimeout);
   }
 
+  /// „Zacznij od nowa": usuwa WSZYSTKIE transakcje gospodarstwa (u obojga
+  /// domowników — dane są wspólne). Nie dotyka inwestycji, kategorii,
+  /// budżetów, cyklicznych ani nauczonych reguł importu. Zwraca liczbę
+  /// usuniętych wpisów. Dłuższy timeout — to setki wierszy naraz.
+  Future<int> deleteAllForHousehold(String householdId) async {
+    final rows = await supabase
+        .from('transactions')
+        .delete()
+        .eq('household_id', householdId)
+        .select('id')
+        .timeout(const Duration(seconds: 30));
+    return rows.length;
+  }
+
   /// `occurred_at` w bazie to kolumna `date` — serializacja identyczna jak
   /// w [PendingTransaction.toSupabaseInsert] (data UTC, bez godziny).
   static String _dateOnly(DateTime dt) {

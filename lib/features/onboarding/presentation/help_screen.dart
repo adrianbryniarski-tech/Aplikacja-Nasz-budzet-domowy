@@ -330,6 +330,23 @@ class HelpScreen extends StatelessWidget {
             ],
           ),
           _HelpSection(
+            emoji: '🧹',
+            title: 'Zacznij od nowa (reset wpisów)',
+            steps: [
+              'Ustawienia → sekcja „Twoje dane" → „Zacznij od nowa (usuń '
+                  'wszystkie wpisy)".',
+              'Usuwa WSZYSTKIE transakcje — u obojga domowników, z chmury '
+                  'i z telefonów. Tego nie da się cofnąć, dlatego trzeba '
+                  'przepisać słowo „KASUJĘ", zanim przycisk się odblokuje.',
+              'Nietknięte zostają: inwestycje, kategorie, budżety (limity), '
+                  'płatności cykliczne i nauczone kategorie importu — '
+                  'zaczynacie z czystą listą, ale bez konfigurowania '
+                  'wszystkiego od zera.',
+              'Rada: tuż przed resetem zrób „Eksport do CSV" — zostanie '
+                  'Wam kopia historii.',
+            ],
+          ),
+          _HelpSection(
             emoji: '📤',
             title: 'Eksport do Excela (CSV)',
             steps: [

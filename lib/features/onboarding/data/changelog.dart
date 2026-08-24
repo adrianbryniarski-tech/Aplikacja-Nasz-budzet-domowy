@@ -25,6 +25,23 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-24b',
+    date: '24 sierpnia 2026',
+    title: 'Reset wpisów i pewniejsze aktualizacje',
+    changes: [
+      'W Ustawieniach (sekcja „Twoje dane") jest teraz „Zacznij od '
+          'nowa" — usuwa wszystkie transakcje u obojga, gdy chcecie '
+          'wystartować z czystą kartą. Inwestycje, kategorie, budżety '
+          'i płatności cykliczne zostają nietknięte.',
+      'Żeby nikt nie skasował budżetu przypadkiem, trzeba przepisać '
+          'słowo „KASUJĘ" — dopiero wtedy przycisk się odblokuje. '
+          'Przed resetem warto zrobić eksport do CSV.',
+      'Każde kolejne APK ma teraz rosnący numer wersji — aktualizacja '
+          'instaluje się po wierzchu niezależnie od tego, jak starą '
+          'wersję ma telefon. Wystarczy ten sam stały link.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-24a',
     date: '24 sierpnia 2026',
     title: 'Nowy pulpit z prawdziwym efektem WOW',

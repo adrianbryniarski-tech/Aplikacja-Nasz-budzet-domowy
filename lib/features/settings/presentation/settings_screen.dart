@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/core/error_messages.dart';
 import 'package:nasz_budzet_domowy/core/haptics.dart';
+import 'package:nasz_budzet_domowy/core/offline/sync_providers.dart';
 import 'package:nasz_budzet_domowy/core/security/app_lock.dart';
 import 'package:nasz_budzet_domowy/features/animations/application/animation_settings.dart';
 import 'package:nasz_budzet_domowy/features/auth/application/auth_providers.dart';
@@ -16,6 +17,7 @@ import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_v2_p
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/csv_export.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
+import 'package:nasz_budzet_domowy/features/settings/presentation/reset_transactions_dialog.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/voice_input_service.dart';
@@ -247,6 +249,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const _ExportCsvCard(),
+          const SizedBox(height: 8),
+          const _ResetTransactionsCard(),
           const SizedBox(height: 32),
           Text(
             'Info',
@@ -1175,6 +1179,72 @@ class _AppLockCard extends ConsumerWidget {
 }
 
 /// Eksport transakcji do pliku CSV (Excel) przez systemowe „Udostępnij".
+/// „Zacznij od nowa": kasuje wszystkie transakcje gospodarstwa (chmura +
+/// lokalna kolejka offline), nie ruszając inwestycji, kategorii, budżetów,
+/// cyklicznych ani reguł importu. Chronione przepisaniem frazy.
+class _ResetTransactionsCard extends ConsumerWidget {
+  const _ResetTransactionsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return ComicCard(
+      child: ListTile(
+        leading: AppIcon(
+          Icons.restart_alt,
+          color: theme.colorScheme.error,
+        ),
+        title: Text(
+          'Zacznij od nowa (usuń wszystkie wpisy)',
+          style: TextStyle(color: theme.colorScheme.error),
+        ),
+        subtitle: const Text(
+          'Kasuje wszystkie transakcje u obojga. Inwestycje, kategorie, '
+          'budżety i cykliczne zostają.',
+        ),
+        trailing: const AppIcon(Icons.chevron_right),
+        onTap: () => _confirmAndReset(context, ref),
+      ),
+    );
+  }
+
+  Future<void> _confirmAndReset(BuildContext context, WidgetRef ref) async {
+    final householdId = ref.read(currentHouseholdIdProvider).value;
+    if (householdId == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+
+    final deleted = await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ResetTransactionsDialog(
+        onConfirm: () async {
+          // Najpierw chmura (źródło prawdy), potem lokalna kolejka —
+          // żeby niewysłane wpisy offline nie wróciły po resecie.
+          final count = await ref
+              .read(transactionRepositoryProvider)
+              .deleteAllForHousehold(householdId);
+          await ref.read(pendingOpsDaoProvider).removeForHousehold(
+                householdId,
+              );
+          return count;
+        },
+      ),
+    );
+    if (deleted == null) return;
+
+    ref.invalidate(transactionsProvider);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted == 0
+              ? 'Nie było nic do usunięcia — budżet już jest pusty.'
+              : 'Usunięto $deleted transakcji. Zaczynacie od nowa 🌱',
+        ),
+      ),
+    );
+  }
+}
+
 class _ExportCsvCard extends ConsumerWidget {
   const _ExportCsvCard();
 
