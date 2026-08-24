@@ -218,7 +218,10 @@ class AppTheme {
     // Kształt przycisków zależny od motywu: pigułka (clay), ośmiokąt „CasiOak"
     // (Manga — ścięte rogi), ostre prostokąty (mono/cyber), zaokrąglone (reszta).
     final buttonShape = switch (variant) {
-      AppThemeVariant.plastelina => StadiumBorder(side: borderSide),
+      // Neo: pigułki jak w nowoczesnych apkach fintech (Finity/Revolut).
+      AppThemeVariant.plastelina ||
+      AppThemeVariant.neo =>
+        StadiumBorder(side: borderSide),
       AppThemeVariant.manga => BeveledRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: borderSide,
@@ -428,15 +431,18 @@ class AppTheme {
           cardElevation: 0,
         ),
 
-      // Neo — „kozacki" motyw w parze z nowym pulpitem: elektryczny
-      // indygo + cyjanowy gradient, czerń OLED w ciemnym, chłodna biel
-      // w jasnym. Neonowe glow/animowane bordery (hasNeonEffects).
+      // Neo 2.0 — motyw w parze z nowym pulpitem, projekt wg języka
+      // nowoczesnych fintechów (Stripe-owy grotesk Inter, tabelaryczne
+      // cyfry, atmosferyczny fioletowy granat zamiast czerni, ambient
+      // z plam światła w NeonGradientBackground). Kolor żyje w danych
+      // (gradienty na wykresach), chrome zostaje spokojny.
       AppThemeVariant.neo => _ThemeSpec(
-          seed: isDark ? const Color(0xFF7C6CFF) : const Color(0xFF5B4CFF),
+          seed: isDark ? const Color(0xFF8B7CFF) : const Color(0xFF5B4CFF),
           background:
-              isDark ? const Color(0xFF05060E) : const Color(0xFFF4F5FB),
-          surface: isDark ? const Color(0xFF10131F) : const Color(0xFFFFFFFF),
-          cardElevation: isDark ? 0 : 1,
+              isDark ? const Color(0xFF0D0A1E) : const Color(0xFFF4F3FB),
+          surface: isDark ? const Color(0xFF171331) : const Color(0xFFFFFFFF),
+          cardElevation: 0,
+          fontFamily: 'Inter',
         ),
 
       // Dragon Ball — pomarańcz gi Goku + złota energia ki, ciepłe tło,
