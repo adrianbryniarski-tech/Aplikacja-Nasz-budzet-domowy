@@ -120,7 +120,16 @@ jobs:
           # --release: kompilacja AOT — apka wyraźnie płynniejsza i mniejsza
           # niż debug/JIT. --split-per-abi: osobny APK per architektura
           # (libvosk/Kaldi nie dubluje się 3x w jednym pliku).
+          #
+          # --build-number=github.run_number: versionCode ROŚNIE z każdym
+          # buildem, więc każde kolejne APK instaluje się po wierzchu
+          # niezależnie od tego, jak stara wersja siedzi na telefonie
+          # (Android odrzuca tylko downgrade). Bez tego wszystkie buildy
+          # miały versionCode=1 z pubspec. --build-name: czytelna wersja
+          # w ustawieniach Androida (1.0.<numer buildu>).
           flutter build apk --release --split-per-abi \
+            --build-name=1.0.${{ github.run_number }} \
+            --build-number=${{ github.run_number }} \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=APP_VERSION=release-${{ github.sha }}
@@ -149,7 +158,7 @@ jobs:
           set -e
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             nasz-budzet-domowy.apk
-          notes="Najnowsza wersja apki (release, podpis debug keystore). Zaktualizowano: $(date -u '+%Y-%m-%d %H:%M UTC'), commit ${GITHUB_SHA::7}. Przed instalacją odinstaluj poprzednią wersję, jeśli instalator zgłosi konflikt podpisu."
+          notes="Najnowsza wersja apki: 1.0.${{ github.run_number }} (release, podpis debug keystore). Zaktualizowano: $(date -u '+%Y-%m-%d %H:%M UTC'), commit ${GITHUB_SHA::7}. Instaluje się po wierzchu na każdą starszą wersję; przed instalacją odinstaluj poprzednią TYLKO jeśli instalator zgłosi konflikt podpisu."
           if gh release view apk >/dev/null 2>&1; then
             gh release edit apk --title "Najnowszy APK" --notes "$notes" --latest
           else
