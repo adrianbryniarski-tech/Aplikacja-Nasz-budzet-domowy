@@ -62,6 +62,11 @@ enum AppThemeVariant {
     description: 'Minimal premium: dużo bieli/czerni, wielka typografia, jeden '
         'żywy akcent. Czysto i nowocześnie.',
   ),
+  neo(
+    label: 'Neo',
+    description: 'Elektryczny indygo + cyjan na czerni OLED, neonowy gradient '
+        'i glow. Zaprojektowany w parze z nowym pulpitem.',
+  ),
   dragonBall(
     label: 'Dragon Ball',
     description: 'Świat Dragon Ball: pomarańcz gi i energia ki, złote akcenty, '
@@ -90,11 +95,11 @@ enum AppThemeVariant {
       this == AppThemeVariant.kredka || this == AppThemeVariant.manga;
 
   /// Czy motyw używa "premium" efektów neon: glow buttons, animated borders.
-  /// Tylko dla 3 neon-tematów.
   bool get hasNeonEffects =>
       this == AppThemeVariant.cyber ||
       this == AppThemeVariant.synthwave ||
-      this == AppThemeVariant.galaktyka;
+      this == AppThemeVariant.galaktyka ||
+      this == AppThemeVariant.neo;
 
   /// Czy rysujemy subtelne dwukolorowe tło-gradient (neon + Dragon Ball,
   /// Pokémon). Szersze niż [hasNeonEffects] — nie pociąga glow/animated.
@@ -109,6 +114,8 @@ enum AppThemeVariant {
         AppThemeVariant.cyber => const Color(0xFF00D9C0),
         AppThemeVariant.synthwave => const Color(0xFF6CC7FF),
         AppThemeVariant.galaktyka => const Color(0xFFFF6CD9),
+        AppThemeVariant.neo => const Color(0xFF22D3EE), // cyjan
+
         AppThemeVariant.dragonBall => const Color(0xFFFFC400), // złota energia
         AppThemeVariant.pokemon => const Color(0xFFFFCB05), // elektryczny żółty
         _ => const Color(0xFF000000),
@@ -421,6 +428,17 @@ class AppTheme {
           cardElevation: 0,
         ),
 
+      // Neo — „kozacki" motyw w parze z nowym pulpitem: elektryczny
+      // indygo + cyjanowy gradient, czerń OLED w ciemnym, chłodna biel
+      // w jasnym. Neonowe glow/animowane bordery (hasNeonEffects).
+      AppThemeVariant.neo => _ThemeSpec(
+          seed: isDark ? const Color(0xFF7C6CFF) : const Color(0xFF5B4CFF),
+          background:
+              isDark ? const Color(0xFF05060E) : const Color(0xFFF4F5FB),
+          surface: isDark ? const Color(0xFF10131F) : const Color(0xFFFFFFFF),
+          cardElevation: isDark ? 0 : 1,
+        ),
+
       // Dragon Ball — pomarańcz gi Goku + złota energia ki, ciepłe tło,
       // gruba „anime" typografia w nagłówkach (Russo One). Energetycznie.
       AppThemeVariant.dragonBall => _ThemeSpec(
@@ -484,6 +502,7 @@ class AppTheme {
       AppThemeVariant.kredka => 16, // pyzate, ale nie owalne
       AppThemeVariant.plastelina => 30, // mocno zaokrąglone, „z gliny"
       AppThemeVariant.aurora => 20,
+      AppThemeVariant.neo => 24, // duże, „premium" zaokrąglenia
       AppThemeVariant.dragonBall => 14, // chunky, energetyczne
       AppThemeVariant.pokemon => 18, // przyjazne, okrągławe
       AppThemeVariant.manga => 0, // ostre panele jak bezel zegarka G-Shock
