@@ -295,5 +295,25 @@ void main() {
       expect(find.text('Saldo okresu'), findsOneWidget);
       expect(find.text('ZOSTAŁO W TYM OKRESIE'), findsNothing);
     });
+
+    testWidgets('na motywie Neo renderuje się z efektami (aurora tyka)',
+        (tester) async {
+      await initializeDateFormatting('pl_PL');
+      SharedPreferences.setMockInitialValues({
+        'dashboard_v2_enabled': true,
+        'theme_variant': 'neo',
+      });
+
+      await tester.pumpWidget(app());
+      // Aurora i neonowa ramka animują w pętli — pumpAndSettle by wisiał,
+      // więc pompujemy ograniczoną liczbę klatek.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.text('ZOSTAŁO W TYM OKRESIE'), findsOneWidget);
+      expect(find.text('Budżety'), findsOneWidget);
+      expect(find.text('Ostatnie transakcje'), findsOneWidget);
+    });
   });
 }

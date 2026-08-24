@@ -25,6 +25,25 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-24a',
+    date: '24 sierpnia 2026',
+    title: 'Nowy pulpit z prawdziwym efektem WOW',
+    changes: [
+      'Za kartami nowego pulpitu faluje teraz „aurora" — wielkie, '
+          'powoli dryfujące plamy światła w kolorach motywu. Karty '
+          'zrobiły się szklane, z cienkimi świecącymi ramkami.',
+      'Saldo w wielkiej karcie jest malowane gradientem indygo→cyjan '
+          'i delikatnie świeci, kwoty dochodów/wydatków mają neonową '
+          'poświatę, a wokół głównej karty krąży animowana ramka.',
+      'Kółko budżetów i paski kategorii świecą swoimi kolorami, linia '
+          'wykresu ma poświatę, a przyciski Wydatek/Dochód dostały glow.',
+      'Karty wjeżdżają na ekran jedna po drugiej przy wejściu na pulpit.',
+      'Efekty widać na motywach neonowych (Neo, Cyber, Synthwave, '
+          'Galaktyka) — najlepiej w trybie ciemnym. Na spokojnych '
+          'motywach nowy pulpit zostaje elegancko stonowany.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23g',
     date: '23 sierpnia 2026',
     title: 'Nowy pulpit dostał własny motyw „Neo"',
