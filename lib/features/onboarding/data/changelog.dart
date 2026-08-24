@@ -25,6 +25,22 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-23g',
+    date: '23 sierpnia 2026',
+    title: 'Nowy pulpit dostał własny motyw „Neo"',
+    changes: [
+      'Włączenie „Nowego pulpitu (beta)" przełącza teraz całą apkę na '
+          'nowy motyw „Neo" — elektryczny indygo z cyjanowym neonem, '
+          'zaprojektowany w parze z nowym pulpitem. Najbardziej robi '
+          'wrażenie w trybie ciemnym.',
+      'Po wyłączeniu nowego pulpitu wraca Twój poprzedni motyw. '
+          'A jeśli wolisz nowy pulpit w innym stylu — po prostu wybierz '
+          'inny motyw w Ustawieniach, nic się nie zresetuje.',
+      '„Neo" jest też dostępny jak każdy inny motyw na liście — możesz '
+          'go używać także z klasycznym pulpitem.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-23f',
     date: '23 sierpnia 2026',
     title: 'Nowy pulpit do włączenia — zaprojektowany wg trendów 2026',

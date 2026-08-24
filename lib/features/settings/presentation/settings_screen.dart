@@ -885,7 +885,9 @@ class _DashboardV2Tile extends ConsumerWidget {
         subtitle: const Text(
           'Świeży układ: ile zostało do wydania (z podpowiedzią „ile '
           'dziennie"), budżety, trend, top kategorie, nadchodzące '
-          'płatności i ostatnie transakcje. Można wrócić w każdej chwili.',
+          'płatności i ostatnie transakcje. Włącza też pasujący motyw '
+          '„Neo" (poprzedni wróci po wyłączeniu; motyw możesz zmienić '
+          'jak zwykle).',
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),

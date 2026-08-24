@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:nasz_budzet_domowy/app/theme.dart';
 import 'package:nasz_budzet_domowy/features/budgets/application/budget_providers.dart';
 import 'package:nasz_budzet_domowy/features/budgets/data/budget.dart';
 import 'package:nasz_budzet_domowy/features/categories/application/category_providers.dart';
@@ -12,6 +13,7 @@ import 'package:nasz_budzet_domowy/features/dashboard/presentation/dashboard_scr
 import 'package:nasz_budzet_domowy/features/dashboard/presentation/dashboard_v2.dart';
 import 'package:nasz_budzet_domowy/features/household/application/household_providers.dart';
 import 'package:nasz_budzet_domowy/features/investments/application/investment_providers.dart';
+import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -139,6 +141,53 @@ void main() {
       expect(container.read(dashboardV2EnabledProvider), isTrue);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('dashboard_v2_enabled'), isTrue);
+    });
+
+    test('włączenie przełącza motyw na Neo, wyłączenie przywraca', () async {
+      SharedPreferences.setMockInitialValues({'theme_variant': 'galaktyka'});
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      // Poczekaj aż themeVariantProvider wczyta zapisany motyw.
+      container.listen(themeVariantProvider, (_, __) {});
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(container.read(themeVariantProvider), AppThemeVariant.galaktyka);
+
+      await container
+          .read(dashboardV2EnabledProvider.notifier)
+          .setEnabled(enabled: true);
+      expect(container.read(themeVariantProvider), AppThemeVariant.neo);
+
+      await container
+          .read(dashboardV2EnabledProvider.notifier)
+          .setEnabled(enabled: false);
+      expect(
+        container.read(themeVariantProvider),
+        AppThemeVariant.galaktyka,
+        reason: 'poprzedni motyw ma wrócić po wyłączeniu nowego pulpitu',
+      );
+    });
+
+    test('ręczna zmiana motywu przy włączonym pulpicie jest szanowana',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final v2 = container.read(dashboardV2EnabledProvider.notifier);
+
+      await v2.setEnabled(enabled: true);
+      expect(container.read(themeVariantProvider), AppThemeVariant.neo);
+
+      // Użytkownik ręcznie wybiera Mangę przy włączonym nowym pulpicie.
+      await container
+          .read(themeVariantProvider.notifier)
+          .set(AppThemeVariant.manga);
+
+      await v2.setEnabled(enabled: false);
+      expect(
+        container.read(themeVariantProvider),
+        AppThemeVariant.manga,
+        reason: 'nie nadpisujemy ręcznego wyboru użytkownika',
+      );
     });
   });
 
