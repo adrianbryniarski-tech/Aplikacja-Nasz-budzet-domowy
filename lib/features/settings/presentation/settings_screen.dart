@@ -212,6 +212,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const _BankListenerCard(),
+          const _BankListenerStatusCard(),
           const SizedBox(height: 32),
           Text(
             'Transakcje cykliczne',
@@ -996,8 +997,196 @@ class _BankListenerCard extends ConsumerWidget {
             await controller.requestPermission();
             await controller.syncWithSettings();
           }
+          ref.invalidate(bankListenerStatusProvider);
         },
       ),
+    );
+  }
+}
+
+/// Status nasłuchu: czy Android dał dostęp i czy usługa jest podłączona.
+/// Bez tego przełącznik świeci „włączony", a funkcja może być martwa —
+/// dokładnie to zgłosił użytkownik („nigdzie tego nie widzę").
+final bankListenerStatusProvider =
+    FutureProvider<({bool permission, bool connected})>((ref) async {
+  final controller = ref.watch(bankListenerControllerProvider);
+  final permission = await controller.isPermissionGranted();
+  final connected = permission && await controller.isServiceConnected();
+  return (permission: permission, connected: connected);
+});
+
+/// Diagnostyka nasłuchu — pokazuje wprost, czy dostęp systemowy jest
+/// nadany, ile propozycji czeka i pozwala ręcznie zajrzeć do panelu
+/// powiadomień („Sprawdź teraz").
+class _BankListenerStatusCard extends ConsumerWidget {
+  const _BankListenerStatusCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final enabled = ref.watch(bankListenerEnabledProvider);
+    if (!enabled) return const SizedBox.shrink();
+
+    final status = ref.watch(bankListenerStatusProvider);
+    final waiting = ref.watch(visibleBankSuggestionsProvider).length;
+    final permission = status.value?.permission ?? false;
+    final connected = status.value?.connected ?? false;
+    final loading = status.isLoading;
+
+    return ComicCard(
+      margin: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Stan nasłuchu',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            _StatusRow(
+              ok: permission,
+              loading: loading,
+              label: permission
+                  ? 'Android przekazuje powiadomienia'
+                  : 'BRAK dostępu do powiadomień w Androidzie',
+            ),
+            const SizedBox(height: 6),
+            _StatusRow(
+              ok: connected,
+              loading: loading,
+              label: connected
+                  ? 'Usługa podłączona do systemu'
+                  : 'Usługa nie jest podłączona',
+            ),
+            const SizedBox(height: 6),
+            _StatusRow(
+              ok: waiting > 0,
+              neutral: waiting == 0,
+              label: waiting > 0
+                  ? '$waiting propozycji czeka na liście Transakcji'
+                  : 'Brak propozycji w kolejce',
+            ),
+            if (!permission && !loading) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Bez tego dostępu apka nie zobaczy ANI JEDNEJ płatności. '
+                'Stuknij poniżej i zaznacz „Nasz budżet domowy" na liście, '
+                'którą otworzy Android.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!permission)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final controller =
+                          ref.read(bankListenerControllerProvider);
+                      await controller.requestPermission();
+                      await controller.syncWithSettings();
+                      ref.invalidate(bankListenerStatusProvider);
+                    },
+                    icon: const AppIcon(Icons.lock_open, size: 18),
+                    label: const Text('Nadaj dostęp'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final controller = ref.read(bankListenerControllerProvider);
+                    if (!await controller.isServiceConnected()) {
+                      await controller.reconnectService();
+                    }
+                    final added = await controller.catchUpFromShade();
+                    ref.invalidate(bankListenerStatusProvider);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          added > 0
+                              ? 'Znalazłem $added nowych płatności '
+                                  '— są na liście Transakcji.'
+                              : 'Nic nowego w panelu powiadomień. '
+                                  'Pamiętaj: zmiecione powiadomienia '
+                                  'przepadają.',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const AppIcon(Icons.refresh, size: 18),
+                  label: const Text('Sprawdź teraz'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Jak to działa: gdy apka jest uruchomiona, propozycje wpadają '
+              'od razu. Płatności zrobione przy zamkniętej apce apka '
+              'dociąga z panelu powiadomień przy każdym wejściu — o ile '
+              'powiadomienie nadal tam wisi. Dlatego nie zmiataj pushy '
+              'z banku, dopóki nie wejdziesz do apki.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Wiersz statusu: zielona fajka / czerwony krzyżyk / szara kropka.
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
+    required this.ok,
+    required this.label,
+    this.loading = false,
+    this.neutral = false,
+  });
+
+  final bool ok;
+  final String label;
+  final bool loading;
+  final bool neutral;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = neutral
+        ? theme.colorScheme.onSurfaceVariant
+        : ok
+            ? AppTheme.incomeAccent
+            : theme.colorScheme.error;
+    return Row(
+      children: [
+        if (loading)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Icon(
+            neutral
+                ? Icons.remove_circle_outline
+                : ok
+                    ? Icons.check_circle
+                    : Icons.error,
+            size: 18,
+            color: color,
+          ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(label, style: theme.textTheme.bodySmall),
+        ),
+      ],
     );
   }
 }

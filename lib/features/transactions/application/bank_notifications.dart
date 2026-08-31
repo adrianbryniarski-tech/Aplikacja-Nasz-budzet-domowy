@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
@@ -63,6 +64,63 @@ class BankSuggestion {
       };
 }
 
+/// Surowe powiadomienie — wejście dla logiki (ze strumienia na żywo
+/// ALBO z panelu powiadomień przy wejściu do apki). Wydzielone, żeby
+/// filtrowanie i deduplikację można było testować bez Androida.
+class RawBankNotification {
+  const RawBankNotification({
+    required this.packageName,
+    required this.id,
+    required this.postTimeMs,
+    required this.title,
+    required this.content,
+  });
+
+  final String packageName;
+  final int id;
+
+  /// Kiedy system POKAZAŁ powiadomienie (ms epoch). Używamy tego jako
+  /// godziny płatności — inaczej wpis dociągnięty wieczorem z panelu
+  /// dostałby datę wejścia do apki, nie zakupu.
+  final int postTimeMs;
+  final String? title;
+  final String? content;
+
+  DateTime get postedAt => postTimeMs > 0
+      ? DateTime.fromMillisecondsSinceEpoch(postTimeMs)
+      : DateTime.now();
+}
+
+/// Klucz „to powiadomienie już przetworzyliśmy": pakiet + id + czas.
+///
+/// KLUCZOWE dla dociągania z panelu: powiadomienie o płatności wisi
+/// w panelu godzinami, a apka zagląda tam przy każdym wejściu — bez
+/// tego klucza ta sama płatność wracałaby jako nowa propozycja.
+String seenKeyFor(RawBankNotification n) =>
+    '${n.packageName}|${n.id}|${n.postTimeMs}';
+
+/// Filtruje surowe powiadomienia do obsługiwanych banków, pomija już
+/// przetworzone i parsuje na propozycje (z godziną z powiadomienia).
+List<BankSuggestion> suggestionsFromRaw(
+  List<RawBankNotification> raws,
+  Set<String> seenKeys,
+) {
+  final out = <BankSuggestion>[];
+  for (final raw in raws) {
+    final bank = kBankPackages[raw.packageName];
+    if (bank == null) continue;
+    if (seenKeys.contains(seenKeyFor(raw))) continue;
+    final suggestion = BankNotificationParser.parse(
+      bank: bank,
+      title: raw.title,
+      content: raw.content,
+      capturedAt: raw.postedAt,
+    );
+    if (suggestion != null) out.add(suggestion);
+  }
+  return out;
+}
+
 /// Wyłuskuje kwotę/typ/sklep z tekstu powiadomienia bankowego.
 ///
 /// Formaty powiadomień różnią się między bankami i wersjami aplikacji,
@@ -93,6 +151,7 @@ class BankNotificationParser {
     required String bank,
     required String? title,
     required String? content,
+    DateTime? capturedAt,
   }) {
     final text = [title, content]
         .whereType<String>()
@@ -129,7 +188,7 @@ class BankNotificationParser {
       merchant: merchant,
       amountCents: cents,
       type: isIncome ? TransactionType.income : TransactionType.expense,
-      capturedAt: DateTime.now(),
+      capturedAt: capturedAt ?? DateTime.now(),
     );
   }
 }
@@ -144,7 +203,19 @@ final bankSuggestionsProvider =
 
 class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
   static const _prefsKey = 'bank_suggestions';
+  static const _seenPrefsKey = 'bank_seen_notifications';
   static const maxSuggestions = 20;
+
+  /// Ile kluczy przetworzonych powiadomień pamiętamy. 200 to z zapasem
+  /// kilka dni płatności — starsze i tak wypadły już z panelu.
+  static const maxSeenKeys = 200;
+
+  /// Klucze powiadomień, z których propozycja już powstała (albo została
+  /// odrzucona). Trzyma je dysk, więc dociąganie z panelu nie tworzy
+  /// duplikatów po restarcie apki.
+  final _seenKeys = <String>[];
+
+  Set<String> get seenKeys => _seenKeys.toSet();
 
   @override
   List<BankSuggestion> build() {
@@ -155,6 +226,9 @@ class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
   Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _seenKeys
+        ..clear()
+        ..addAll(prefs.getStringList(_seenPrefsKey) ?? const []);
       final raw = prefs.getStringList(_prefsKey) ?? const [];
       final loaded = [
         for (final s in raw)
@@ -172,7 +246,8 @@ class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
     }
   }
 
-  Future<void> add(BankSuggestion suggestion) async {
+  /// Zwraca `true` gdy propozycja faktycznie doszła (nie była dubletem).
+  Future<bool> add(BankSuggestion suggestion) async {
     // Anty-dublet: ta sama kwota w oknie 10 minut = jedna propozycja.
     // Celowo BEZ porównywania sklepu — o jednej płatności zbliżeniowej
     // potrafią powiadomić dwie aplikacje naraz (bank i Portfel Google),
@@ -184,9 +259,49 @@ class BankSuggestionsNotifier extends Notifier<List<BankSuggestion>> {
           s.amountCents == suggestion.amountCents &&
           suggestion.capturedAt.difference(s.capturedAt).inMinutes.abs() < 10,
     );
-    if (duplicate) return;
+    if (duplicate) return false;
     state = [suggestion, ...state].take(maxSuggestions).toList();
     await _persist();
+    return true;
+  }
+
+  /// Wrzuca surowe powiadomienia (ze strumienia albo z panelu):
+  /// filtruje do banków, pomija już przetworzone, dodaje propozycje.
+  /// Zwraca liczbę NOWYCH propozycji — Ustawienia pokazują ją w toaście.
+  Future<int> ingest(List<RawBankNotification> raws) async {
+    if (raws.isEmpty) return 0;
+    final fresh = suggestionsFromRaw(raws, seenKeys);
+    // Klucze oznaczamy dla WSZYSTKICH powiadomień z obsługiwanych apek —
+    // także tych bez kwoty (np. „Zaloguj się") — żeby nie próbować ich
+    // parsować przy każdym wejściu do apki.
+    for (final raw in raws) {
+      if (kBankPackages.containsKey(raw.packageName)) {
+        _markSeen(seenKeyFor(raw));
+      }
+    }
+    var added = 0;
+    for (final suggestion in fresh) {
+      if (await add(suggestion)) added++;
+    }
+    await _persistSeen();
+    return added;
+  }
+
+  void _markSeen(String key) {
+    if (_seenKeys.contains(key)) return;
+    _seenKeys.add(key);
+    if (_seenKeys.length > maxSeenKeys) {
+      _seenKeys.removeRange(0, _seenKeys.length - maxSeenKeys);
+    }
+  }
+
+  Future<void> _persistSeen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_seenPrefsKey, _seenKeys);
+    } on Object catch (e) {
+      debugPrint('bank_seen persist: $e');
+    }
   }
 
   Future<void> remove(String id) async {
@@ -286,8 +401,15 @@ final bankListenerControllerProvider = Provider<BankListenerController>((ref) {
 class BankListenerController {
   BankListenerController(this._ref);
 
+  /// Ten sam kanał, którego używa plugin — sięgamy po metody, których
+  /// nie wystawia w Darcie (stan połączenia usługi z systemem).
+  static const _channel = MethodChannel('x-slayer/notifications_channel');
+
   final Ref _ref;
   StreamSubscription<ServiceNotificationEvent>? _sub;
+
+  /// Czy nasłuch jest aktywny w tej instancji apki (żywa subskrypcja).
+  bool get isListening => _sub != null;
 
   /// Czy systemowy dostęp do powiadomień jest nadany.
   Future<bool> isPermissionGranted() async {
@@ -309,6 +431,64 @@ class BankListenerController {
     }
   }
 
+  /// Czy systemowa usługa nasłuchu jest PODŁĄCZONA do Androida.
+  /// Dostęp nadany ≠ usługa działa: po aktualizacji apki albo po
+  /// „wyczyść pamięć" system czasem nie podłącza jej z powrotem.
+  Future<bool> isServiceConnected() async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>('isServiceConnected');
+      return result ?? false;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Prosi system o ponowne podłączenie usługi (gdy dostęp jest nadany,
+  /// ale usługa rozłączona).
+  Future<void> reconnectService() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('reconnectService');
+    } on Object catch (e) {
+      debugPrint('bank listener reconnect: $e');
+    }
+  }
+
+  /// DOCIĄGANIE Z PANELU POWIADOMIEŃ — sedno działania przy zamkniętej
+  /// apce. Strumień na żywo działa tylko wtedy, gdy apka siedzi
+  /// w pamięci (system rozgłasza powiadomienie, a odbiornik żyje razem
+  /// z apką). Płatności zrobione przy zamkniętej apce przepadłyby więc
+  /// bezpowrotnie — dlatego przy każdym wejściu/powrocie do apki
+  /// zaglądamy do panelu powiadomień i zbieramy to, co jeszcze w nim
+  /// wisi (Portfel Google i banki trzymają tam pushe do zmiecenia).
+  ///
+  /// Zwraca liczbę nowych propozycji.
+  Future<int> catchUpFromShade() async {
+    if (kIsWeb || !Platform.isAndroid) return 0;
+    if (!_ref.read(bankListenerEnabledProvider)) return 0;
+    if (!await isPermissionGranted()) return 0;
+    try {
+      final active = await NotificationListenerService.getActiveNotifications();
+      final raws = [
+        for (final e in active)
+          RawBankNotification(
+            packageName: e.packageName,
+            id: e.id,
+            postTimeMs: e.timestamp,
+            title: e.title,
+            content: e.content,
+          ),
+      ];
+      return _ref.read(bankSuggestionsProvider.notifier).ingest(raws);
+    } on Object catch (e) {
+      // Usługa może być chwilowo nierozłączona/niepodłączona — to bonus,
+      // nie wolno tym wywalić apki.
+      debugPrint('bank listener catch-up: $e');
+      return 0;
+    }
+  }
+
   Future<void> syncWithSettings() async {
     final enabled = _ref.read(bankListenerEnabledProvider);
     if (!enabled) {
@@ -323,19 +503,26 @@ class BankListenerController {
       // Zerwany kanał nie może ubić apki — nasłuch to bonus.
       onError: (Object e, StackTrace _) => debugPrint('bank listener: $e'),
     );
+    // Od razu zbierz to, co wpadło, gdy apka nie działała.
+    unawaited(catchUpFromShade());
   }
 
   void _onEvent(ServiceNotificationEvent event) {
     if (event.hasRemoved) return;
-    final bank = kBankPackages[event.packageName];
-    if (bank == null) return;
-    final suggestion = BankNotificationParser.parse(
-      bank: bank,
-      title: event.title,
-      content: event.content,
+    if (!kBankPackages.containsKey(event.packageName)) return;
+    // Przez `ingest`, żeby powiadomienie dostało klucz „widziane" —
+    // inaczej to samo wpadłoby drugi raz przy dociąganiu z panelu.
+    unawaited(
+      _ref.read(bankSuggestionsProvider.notifier).ingest([
+        RawBankNotification(
+          packageName: event.packageName,
+          id: event.id,
+          postTimeMs: event.timestamp,
+          title: event.title,
+          content: event.content,
+        ),
+      ]),
     );
-    if (suggestion == null) return;
-    unawaited(_ref.read(bankSuggestionsProvider.notifier).add(suggestion));
   }
 
   void dispose() {

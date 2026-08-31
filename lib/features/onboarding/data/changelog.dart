@@ -25,6 +25,26 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-25a',
+    date: '25 sierpnia 2026',
+    title: 'Propozycje z banku wreszcie działają jak trzeba',
+    changes: [
+      'Do tej pory apka łapała powiadomienia z banku tylko wtedy, gdy '
+          'była uruchomiona — płatności zrobione przy zamkniętej apce '
+          'przepadały. Teraz przy każdym wejściu do apki dociągamy je '
+          'z panelu powiadomień, razem z prawdziwą godziną zakupu.',
+      'Propozycje widać od razu na Pulpicie („Z banku — do '
+          'zatwierdzenia"), nie tylko banerem w Transakcjach. Stuknięcie '
+          'otwiera gotowy formularz.',
+      'W Ustawieniach pojawił się „Stan nasłuchu": mówi wprost, czy '
+          'Android przekazuje powiadomienia, czy usługa jest podłączona '
+          'i ile propozycji czeka. Jest przycisk „Nadaj dostęp" '
+          'i „Sprawdź teraz".',
+      'Jedna płatność nie zrobi już dwóch propozycji, nawet jeśli push '
+          'wisi w panelu cały dzień.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-24c',
     date: '24 sierpnia 2026',
     title: 'Pulpit i motyw Neo zaprojektowane od nowa',
