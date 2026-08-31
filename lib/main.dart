@@ -77,6 +77,15 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
     ref
       ..read(bankListenerEnabledProvider)
       ..listenManual(recurringMaterializerProvider, (_, __) {});
+    // Dociąganie propozycji z panelu powiadomień: płatności zrobione przy
+    // ZAMKNIĘTEJ apce nie trafiają do strumienia (odbiornik żyje razem
+    // z apką), ale ich pushe zwykle jeszcze wiszą w panelu — zbieramy je
+    // przy starcie. Providery ładują przełącznik async, więc dajemy im
+    // chwilę; przy braku zgody funkcja i tak od razu wychodzi.
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      unawaited(ref.read(bankListenerControllerProvider).catchUpFromShade());
+    });
   }
 
   @override
@@ -98,6 +107,9 @@ class _NaszBudzetDomowyAppState extends ConsumerState<NaszBudzetDomowyApp>
       // telefon był cały czas online a padał tylko serwer, kolejka
       // czekała aż do zmiany connectivity albo ręcznego tapnięcia.
       unawaited(ref.read(syncWorkerProvider).syncNow());
+      // …a przy okazji pozbieraj z panelu powiadomienia o płatnościach,
+      // które wpadły, gdy apka była w tle albo ubita.
+      unawaited(ref.read(bankListenerControllerProvider).catchUpFromShade());
       ref
         ..invalidate(transactionsProvider)
         ..invalidate(categoriesProvider)

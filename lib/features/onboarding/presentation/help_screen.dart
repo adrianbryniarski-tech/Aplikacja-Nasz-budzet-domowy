@@ -216,11 +216,24 @@ class HelpScreen extends StatelessWidget {
                   'z powiadomień banku".',
               'Android poprosi o dostęp do powiadomień — zaznacz „Nasz '
                   'budżet domowy" na liście, która się otworzy.',
+              'W Ustawieniach, pod przełącznikiem, jest „Stan nasłuchu" — '
+                  'pokazuje wprost, czy Android faktycznie przekazuje '
+                  'powiadomienia. Jeśli świeci na czerwono, stuknij '
+                  '„Nadaj dostęp": bez tego apka nie zobaczy ani jednej '
+                  'płatności (sam przełącznik w apce nie wystarczy).',
               'Gdy zapłacisz kartą — także zbliżeniowo przez Portfel '
-                  'Google — na liście Transakcji pojawi się baner '
-                  'z propozycją — stuknij ją, sprawdź kategorię i zapisz. '
+                  'Google — propozycja pojawia się na Pulpicie (karta '
+                  '„Z banku — do zatwierdzenia") i banerem na liście '
+                  'Transakcji. Stuknij, sprawdź kategorię i zapisz. '
                   'Czytamy powiadomienia Portfela Google, IKO, Moje ING '
                   'i Revoluta.',
+              'WAŻNE: gdy apka jest zamknięta, Android nie przekazuje jej '
+                  'powiadomień na żywo. Dlatego przy każdym wejściu do '
+                  'apki dociągamy je z panelu powiadomień (tego, który '
+                  'ściągasz palcem z góry ekranu). Wniosek: nie zmiataj '
+                  'pushy z banku, dopóki nie wejdziesz do apki — '
+                  'zmiecione przepadają. Możesz też stuknąć „Sprawdź '
+                  'teraz" w Ustawieniach.',
               'Propozycje zostają na Twoim telefonie (nie w chmurze) '
                   'i znikają po zapisaniu albo odrzuceniu (X).',
               'Duble Wam nie grożą: gdy jedna osoba zapisze płatność, '

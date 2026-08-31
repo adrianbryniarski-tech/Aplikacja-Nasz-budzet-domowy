@@ -13,6 +13,7 @@ import 'package:nasz_budzet_domowy/features/dashboard/application/dashboard_prov
 import 'package:nasz_budzet_domowy/features/dashboard/application/date_range_filter.dart';
 import 'package:nasz_budzet_domowy/features/dashboard/data/dashboard_summary.dart';
 import 'package:nasz_budzet_domowy/features/settings/application/theme_providers.dart';
+import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifications.dart';
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
@@ -67,6 +68,7 @@ class DashboardV2Body extends ConsumerWidget {
             children: [
               entrance(_HeroCard(summary: summary, range: range)),
               const SizedBox(height: 12),
+              entrance(const _PendingSuggestionsCard()),
               entrance(
                 Row(
                   children: [
@@ -519,6 +521,134 @@ class _DecorCircle extends StatelessWidget {
             color: Colors.white.withValues(alpha: alpha),
             width: 24,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Propozycje z powiadomień banku czekające na zatwierdzenie.
+///
+/// Pokazujemy je na PULPICIE (a nie tylko banerem w zakładce
+/// Transakcje), bo to pierwszy ekran po wejściu do apki — inaczej łatwo
+/// przeoczyć, że coś czeka. Stuknięcie wiersza otwiera formularz
+/// z wypełnioną kwotą i sklepem.
+class _PendingSuggestionsCard extends ConsumerWidget {
+  const _PendingSuggestionsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = ref.watch(visibleBankSuggestionsProvider);
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
+    final fmt = NumberFormat('#,##0.00', 'pl_PL');
+    final fmtTime = DateFormat('d.MM HH:mm', 'pl_PL');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _V2Card(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    size: 15,
+                    color: cs.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Z BANKU — DO ZATWIERDZENIA (${suggestions.length})',
+                    style: _labelStyle(tt.labelSmall, cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            for (final s in suggestions.take(3))
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () async {
+                  final added = await context.push<bool>(
+                    '/transactions/add',
+                    extra: TransactionPrefill(
+                      amountCents: s.amountCents,
+                      description: s.merchant,
+                      occurredAt: s.capturedAt,
+                      type: s.type,
+                    ),
+                  );
+                  if (added ?? false) {
+                    await ref
+                        .read(bankSuggestionsProvider.notifier)
+                        .remove(s.id);
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.merchant,
+                              style: tt.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${s.bank} · ${fmtTime.format(s.capturedAt)}',
+                              style: tt.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${s.type == TransactionType.income ? '+' : '−'}'
+                        '${fmt.format(s.amountCents / 100)} zł',
+                        style: _numStyle(
+                          tt.bodySmall,
+                          neonFont: neon,
+                          size: 13,
+                          color: s.type == TransactionType.income
+                              ? AppTheme.incomeAccent
+                              : AppTheme.expenseAccent,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Odrzuć',
+                        visualDensity: VisualDensity.compact,
+                        icon: const AppIcon(Icons.close, size: 16),
+                        onPressed: () => ref
+                            .read(bankSuggestionsProvider.notifier)
+                            .remove(s.id),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
