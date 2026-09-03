@@ -27,12 +27,18 @@ class TransactionPrefill {
     this.description,
     this.occurredAt,
     this.type,
+    this.categoryId,
   });
 
   final int? amountCents;
   final String? description;
   final DateTime? occurredAt;
   final TransactionType? type;
+
+  /// Kategoria zgadnięta z góry (np. „Biedronka → Spożywcze" przy
+  /// propozycji z powiadomienia banku) — formularz otwiera się z nią
+  /// wybraną, user może zmienić.
+  final String? categoryId;
 }
 
 /// Form dodawania LUB edycji transakcji.
@@ -124,6 +130,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
       if (prefill.occurredAt != null) _occurredAt = prefill.occurredAt!;
       if (prefill.type != null) _type = prefill.type!;
+      _initialCategoryId = prefill.categoryId;
     }
   }
 

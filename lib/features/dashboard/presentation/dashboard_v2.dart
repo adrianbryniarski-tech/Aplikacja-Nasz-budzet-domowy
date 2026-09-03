@@ -17,6 +17,7 @@ import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifi
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
+import 'package:nasz_budzet_domowy/features/transactions/presentation/widgets/bank_suggestion_row.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/animated_amount.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
@@ -543,9 +544,6 @@ class _PendingSuggestionsCard extends ConsumerWidget {
 
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final neon = ref.watch(themeVariantProvider).hasNeonEffects;
-    final fmt = NumberFormat('#,##0.00', 'pl_PL');
-    final fmtTime = DateFormat('d.MM HH:mm', 'pl_PL');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -580,74 +578,7 @@ class _PendingSuggestionsCard extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             for (final s in suggestions.take(3))
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () async {
-                  final added = await context.push<bool>(
-                    '/transactions/add',
-                    extra: TransactionPrefill(
-                      amountCents: s.amountCents,
-                      description: s.merchant,
-                      occurredAt: s.capturedAt,
-                      type: s.type,
-                    ),
-                  );
-                  if (added ?? false) {
-                    await ref
-                        .read(bankSuggestionsProvider.notifier)
-                        .remove(s.id);
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.merchant,
-                              style: tt.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${s.bank} · ${fmtTime.format(s.capturedAt)}',
-                              style: tt.labelSmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${s.type == TransactionType.income ? '+' : '−'}'
-                        '${fmt.format(s.amountCents / 100)} zł',
-                        style: _numStyle(
-                          tt.bodySmall,
-                          neonFont: neon,
-                          size: 13,
-                          color: s.type == TransactionType.income
-                              ? AppTheme.incomeAccent
-                              : AppTheme.expenseAccent,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Odrzuć',
-                        visualDensity: VisualDensity.compact,
-                        icon: const AppIcon(Icons.close, size: 16),
-                        onPressed: () => ref
-                            .read(bankSuggestionsProvider.notifier)
-                            .remove(s.id),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              BankSuggestionRow(suggestion: s),
           ],
         ),
       ),

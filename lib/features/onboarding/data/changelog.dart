@@ -25,6 +25,25 @@ class ChangelogEntry {
 
 const List<ChangelogEntry> kChangelog = [
   ChangelogEntry(
+    version: '2026-08-31a',
+    date: '31 sierpnia 2026',
+    title: 'Płatność z banku sama trafia w kategorię',
+    changes: [
+      'Apka wyciąga teraz z powiadomienia nazwę sklepu (bez salda, '
+          'numerów kart i kodów terminali) i sama proponuje kategorię — '
+          'zna popularne sieci, np. Biedronka → Spożywcze, '
+          'Orlen → Transport.',
+      'Przy propozycji jest chip z kategorią i ptaszek: jedno '
+          'tapnięcie i wydatek jest zapisany. Nie trzeba już otwierać '
+          'formularza.',
+      'Jak apka nie wie, do czego przypisać — chip mówi „Wybierz '
+          'kategorię". Wskazujesz raz, wpis się zapisuje, a apka '
+          'zapamiętuje ten sklep na przyszłość.',
+      'Chcesz poprawić kwotę albo datę? Stuknij cały wiersz — otworzy '
+          'się pełny formularz z wypełnionymi polami.',
+    ],
+  ),
+  ChangelogEntry(
     version: '2026-08-25a',
     date: '25 sierpnia 2026',
     title: 'Propozycje z banku wreszcie działają jak trzeba',

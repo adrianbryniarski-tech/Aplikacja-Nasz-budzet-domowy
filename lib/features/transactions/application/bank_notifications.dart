@@ -136,6 +136,63 @@ class BankNotificationParser {
     caseSensitive: false,
   );
 
+  /// Ogony powiadomień, które NIE są nazwą sklepu — ucinamy wszystko od
+  /// nich w prawo („…, dostępne środki: 1 234,00 PLN").
+  static const _tailMarkers = [
+    'dostępne środki',
+    'dostepne srodki',
+    'dostępny limit',
+    'dostepny limit',
+    'dostępne',
+    'saldo',
+    'available balance',
+    'nr transakcji',
+    'numer transakcji',
+    'nr ref',
+    'referencja',
+    'blokada',
+  ];
+
+  /// Maska karty w treści: „Karta ••1234", „•••• 1234", „nr karty 1234".
+  static final _cardMask = RegExp(
+    r'(?:karta|kartą|karty|card)?\s*(?:[•·*×]{2,}|\.{3,})\s*\d{0,4}'
+    r'|nr\s+karty\s*\d+',
+    caseSensitive: false,
+  );
+
+  /// Jakakolwiek kwota (druga kwota w treści to zwykle saldo).
+  static final _anyAmount = RegExp(
+    r'-?\d{1,3}(?:[\s.]\d{3})*[,.]\d{2}\s*(?:zł|PLN)?',
+    caseSensitive: false,
+  );
+
+  static final _dateRe = RegExp(r'\b\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?\b');
+  static final _timeRe = RegExp(r'\b\d{1,2}:\d{2}(?::\d{2})?\b');
+
+  /// Czasownik/nagłówek płatności na początku — „Płatność kartą",
+  /// „Zapłacono", „Zakup", „Payment", „Przelew przychodzący".
+  static final _leadingVerb = RegExp(
+    '^(?:zapłacono|zaplacono|płatność|platnosc|zakup|transakcja|payment|'
+    r'przelew(?:\s+(?:przychodzący|przychodzacy|wychodzący|wychodzacy))?|'
+    'wpłynęło|wplynelo|otrzymano|zwrot)'
+    r'(?:\s+(?:kartą|karta|blik|mobilna|internetowa|zbliżeniowa|'
+    'zblizeniowa|online))?',
+    caseSensitive: false,
+  );
+
+  /// Przyimek/łącznik przed nazwą sklepu: „w Biedronce", „at Tesco",
+  /// „od GMINA", „u fryzjera".
+  static final _leadingConnector = RegExp(
+    r'^(?:[\s,;:·•\-–—*/|]+|\b(?:w|we|at|in|od|do|u|dla|na|for|from)\b)+',
+    caseSensitive: false,
+  );
+
+  /// Kod sklepu/terminala: „Z8134", „K.1", „T12", same cyfry.
+  static final _storeCode = RegExp(
+    r'^(?:[a-z]{1,2}[.]?\d{1,6}|\d+|[a-z]\.\d+)$',
+    caseSensitive: false,
+  );
+
   static const _incomeMarkers = [
     'przelew przychodz',
     'otrzym',
@@ -146,6 +203,56 @@ class BankNotificationParser {
     'zasilenie',
     'zwrot',
   ];
+
+  /// Czyści kandydata na nazwę sklepu: ucina ogon z saldem, wywala maski
+  /// kart, kwoty, daty, godziny, wiodące czasowniki i przyimki oraz kody
+  /// terminali. Zwraca `null`, gdy nie zostało nic sensownego.
+  ///
+  /// Publiczna, bo to najbardziej „zgadywana" część i chcemy ją testować
+  /// na prawdziwych formatach powiadomień (IKO / ING / Wallet / Revolut).
+  static String? cleanMerchant(String raw) {
+    var s = raw;
+
+    // Ogon: „…, dostępne środki: 1 234,00 PLN" → obcięty.
+    final lower = s.toLowerCase();
+    var cut = s.length;
+    for (final marker in _tailMarkers) {
+      final idx = lower.indexOf(marker);
+      if (idx >= 0 && idx < cut) cut = idx;
+    }
+    s = s.substring(0, cut);
+
+    s = s
+        .replaceAll(_cardMask, ' ')
+        .replaceAll(_anyAmount, ' ')
+        .replaceAll(_dateRe, ' ')
+        .replaceAll(_timeRe, ' ')
+        .replaceAll(RegExp(r'\b(?:zł|PLN)\b', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    // Wiodące „Płatność kartą" / „Zapłacono", potem przyimki („w", „at").
+    s = s.replaceFirst(_leadingVerb, '');
+    s = s.replaceFirst(_leadingConnector, '');
+
+    // Kody terminali i osierocone cyfry (BIEDRONKA 1234 KRAKOW).
+    // Interpunkcję z brzegów tokenu zdejmujemy PRZED sprawdzeniem, bo
+    // w treści kody bywają przyklejone do przecinka („K.1,"). Kropek
+    // w środku nie ruszamy — „SP. Z O.O." ma zostać sobą.
+    final words = <String>[];
+    for (final w in s.split(RegExp(r'\s+'))) {
+      final bare = w.replaceAll(RegExp(r'^[,;:·•|*/-]+|[,;:·•|*/-]+$'), '');
+      if (bare.isEmpty || _storeCode.hasMatch(bare)) continue;
+      words.add(bare);
+    }
+    s = words
+        .join(' ')
+        .replaceAll(RegExp(r'^[\s,;:·•\-–—*/|]+|[\s,;:·•\-–—*/|]+$'), '')
+        .trim();
+
+    if (s.length < 2) return null;
+    return s.length > 80 ? s.substring(0, 80) : s;
+  }
 
   static BankSuggestion? parse({
     required String bank,
@@ -168,19 +275,15 @@ class BankNotificationParser {
     final lower = text.toLowerCase();
     final isIncome = _incomeMarkers.any(lower.contains);
 
-    // Sklep: tekst za kwotą (tam banki zwykle wstawiają odbiorcę),
-    // z fallbackiem na tekst przed kwotą i nazwę banku.
-    var merchant = text
-        .substring(match.end)
-        .replaceAll(RegExp(r'^[\s,;:·\-–—]+'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (merchant.isEmpty) {
-      merchant =
-          text.substring(0, match.start).replaceAll(RegExp(r'\s+'), ' ').trim();
-    }
-    if (merchant.isEmpty) merchant = bank;
-    if (merchant.length > 80) merchant = merchant.substring(0, 80);
+    // Sklep: banki wstawiają odbiorcę zwykle ZA kwotą („23,50 PLN,
+    // BIEDRONKA KRAKOW"), ale Portfel Google potrafi odwrotnie
+    // („Biedronka · 23,50 zł"). Bierzemy pierwszego kandydata, z którego
+    // po oczyszczeniu zostaje coś sensownego.
+    final merchant = cleanMerchant(text.substring(match.end)) ??
+        cleanMerchant(text.substring(0, match.start)) ??
+        cleanMerchant(content ?? '') ??
+        cleanMerchant(title ?? '') ??
+        bank;
 
     return BankSuggestion(
       id: const Uuid().v4(),
