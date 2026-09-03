@@ -234,6 +234,18 @@ class HelpScreen extends StatelessWidget {
                   'pushy z banku, dopóki nie wejdziesz do apki — '
                   'zmiecione przepadają. Możesz też stuknąć „Sprawdź '
                   'teraz" w Ustawieniach.',
+              'Apka wyciąga z powiadomienia nazwę sklepu i SAMA proponuje '
+                  'kategorię (zna popularne sieci: Biedronka, Lidl, Orlen, '
+                  'apteki…). Przy propozycji widać chip z kategorią — '
+                  'stuknij ✓ i wpis jest zapisany.',
+              'Gdy apka nie wie, do czego to przypisać, chip świeci '
+                  '„Wybierz kategorię" — stuknij go, wskaż kategorię '
+                  'i wpis od razu się zapisze. Twój wybór zostaje '
+                  'zapamiętany: następny raz ten sklep przypisze się sam '
+                  '(to ta sama pamięć, z której korzysta import wyciągów).',
+              'Chcesz zmienić kwotę, datę albo dopisać notatkę? Stuknij '
+                  'cały wiersz propozycji — otworzy się pełny formularz '
+                  'z wypełnionymi polami.',
               'Propozycje zostają na Twoim telefonie (nie w chmurze) '
                   'i znikają po zapisaniu albo odrzuceniu (X).',
               'Duble Wam nie grożą: gdy jedna osoba zapisze płatność, '

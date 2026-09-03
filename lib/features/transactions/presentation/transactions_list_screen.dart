@@ -14,7 +14,7 @@ import 'package:nasz_budzet_domowy/features/transactions/application/bank_notifi
 import 'package:nasz_budzet_domowy/features/transactions/application/transaction_providers.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction.dart';
 import 'package:nasz_budzet_domowy/features/transactions/data/transaction_repository.dart';
-import 'package:nasz_budzet_domowy/features/transactions/presentation/add_transaction_screen.dart';
+import 'package:nasz_budzet_domowy/features/transactions/presentation/widgets/bank_suggestion_row.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/async_error_state.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/category_avatar.dart';
 import 'package:nasz_budzet_domowy/shared/widgets/comic_shadow.dart';
@@ -722,9 +722,9 @@ class _BankSuggestionsBanner extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     suggestions.length == 1
-                        ? '1 propozycja z powiadomienia banku'
-                        : '${suggestions.length} propozycje/-i z powiadomień '
-                            'banku',
+                        ? '1 propozycja z banku — sprawdź kategorię'
+                        : '${suggestions.length} propozycje z banku — '
+                            'sprawdź kategorie',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
@@ -763,77 +763,15 @@ Future<void> _showBankSuggestionsSheet(BuildContext context) {
                   padding: EdgeInsets.all(20),
                   child: Text('Wszystko przejrzane 🎉'),
                 ),
-              for (final s in suggestions) _BankSuggestionTile(suggestion: s),
+              for (final s in suggestions)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: BankSuggestionRow(suggestion: s),
+                ),
             ],
           ),
         );
       },
     ),
   );
-}
-
-class _BankSuggestionTile extends ConsumerWidget {
-  const _BankSuggestionTile({required this.suggestion});
-
-  final BankSuggestion suggestion;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isIncome = suggestion.type == TransactionType.income;
-    final accent = isIncome ? AppTheme.incomeAccent : AppTheme.expenseAccent;
-    final amount =
-        NumberFormat('#,##0.00', 'pl_PL').format(suggestion.amountCents / 100);
-    return ListTile(
-      title: Text(
-        suggestion.merchant,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        '${suggestion.bank} · '
-        '${DateFormat('d.MM HH:mm').format(suggestion.capturedAt)}',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '${isIncome ? '+' : '−'}$amount zł',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Odrzuć',
-            icon: const AppIcon(Icons.close, size: 18),
-            onPressed: () => ref
-                .read(bankSuggestionsProvider.notifier)
-                .remove(suggestion.id),
-          ),
-        ],
-      ),
-      onTap: () async {
-        // Formularz z wypełnioną kwotą/opisem — user tylko wybiera
-        // kategorię i zapisuje. Po udanym zapisie propozycja znika.
-        final added = await context.push<bool>(
-          '/transactions/add',
-          extra: TransactionPrefill(
-            amountCents: suggestion.amountCents,
-            description: suggestion.merchant,
-            occurredAt: suggestion.capturedAt,
-            type: suggestion.type,
-          ),
-        );
-        if (added ?? false) {
-          await ref
-              .read(bankSuggestionsProvider.notifier)
-              .remove(suggestion.id);
-        }
-      },
-    );
-  }
 }
